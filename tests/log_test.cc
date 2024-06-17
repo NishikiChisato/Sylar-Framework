@@ -189,4 +189,52 @@ TEST(LoggerManager, Basic) {
   SYLAR_WARN_LOG(lg2);
   SYLAR_DEBUG_LOG(lg2);
   SYLAR_WARN_LOG(lg2);
+
+  // singleton, we should set it to initial state
+  lg1->SetMaxLevel(Sylar::LogLevel::DEBUG);
+}
+
+TEST(LogModule, TypicalUsage1) {
+  auto mgr = Sylar::LoggerMgr::GetInstance();
+  auto logger = mgr->GetRoot();
+  std::cout << "Logger level is " << logger->GetMaxLevelToString() << std::endl;
+
+  std::cout << "======================" << std::endl;
+
+  std::cout << "Stream style output example" << std::endl;
+  std::cout << "This message will output: " << std::endl;
+
+  SYLAR_DEBUG_LOG(logger) << "this is a stream style";
+
+  std::cout << "This message will not output: " << std::endl;
+
+  SYLAR_INFO_LOG(logger) << "this is a stream style";
+
+  std::cout << "======================" << std::endl;
+
+  std::cout << "Format output output example" << std::endl;
+
+  std::cout << "This message will not output: " << std::endl;
+
+  SYLAR_FMT_DEBUG_LOG(logger, "this is a format style");
+
+  std::cout << "This message will not output: " << std::endl;
+
+  SYLAR_FMT_INFO_LOG(logger, "this is a format style\n");
+}
+
+TEST(LogModule, TypicalUsage2) {
+  Sylar::Logger::ptr lg(new Sylar::Logger());
+  Sylar::LogEvent::ptr event(new Sylar::LogEvent(
+      lg->GetName(), __FILE__, Sylar::LogLevel::DEBUG, __LINE__, 0,
+      syscall(SYS_gettid), 0, std::time(nullptr)));
+  Sylar::LogAppender::ptr apd(new Sylar::LogAppenderToStd());
+  Sylar::LogFormatter::ptr fmt(new Sylar::LogFormatter(
+      "%d{%Y-%m-%d %H:%M:%S}%T[%c]%T[%p]%T%f:%l%T%m%n"));
+  apd->SetFormatter(fmt);
+  lg->AddAppender(apd);
+
+  lg->Log(event);
+  SYLAR_DEBUG_LOG(lg) << "this is stream style message";
+  SYLAR_FMT_DEBUG_LOG(lg, "this is format style message");
 }
