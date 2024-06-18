@@ -200,6 +200,8 @@ private:
 #define SYLAR_FMT_FATAL_LOG(logger, fmt, ...)                                  \
   SYLAR_FMT_LOG(logger, Sylar::LogLevel::FATAL, fmt, ##__VA_ARGS__)
 
+#define SYLAR_LOG_ROOT Sylar::LoggerMgr::GetInstance()->GetRoot()
+
 /**
  * maybe we only pass one parameter, in this scenario, if we write Format(fmt,
  * __VA_ARGS__), we cannot complie success. we must add ## before __VA_ARGS__,

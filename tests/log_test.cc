@@ -238,3 +238,5 @@ TEST(LogModule, TypicalUsage2) {
   SYLAR_DEBUG_LOG(lg) << "this is stream style message";
   SYLAR_FMT_DEBUG_LOG(lg, "this is format style message");
 }
+
+TEST(LogModule, TypicalUsage3) { SYLAR_DEBUG_LOG(SYLAR_LOG_ROOT); }
