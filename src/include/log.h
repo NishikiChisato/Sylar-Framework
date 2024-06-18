@@ -97,7 +97,7 @@ public:
    * this function simply output log by default format
    */
   virtual void Log(LogEvent::ptr event) = 0;
-  virtual std::string GetAppenderName() = 0;
+  virtual std::string GetAppenderName() const = 0;
   LogAppender()
       : formatter_(new LogFormatter(
             "%d{%Y-%m-%d %H:%M:%S}%T%u%T%t%T%F%T[%p]%T[%c]%T%f:%l%T%m%n")) {}
@@ -110,7 +110,7 @@ protected:
 class LogAppenderToStd : public LogAppender {
 public:
   void Log(LogEvent::ptr event) override;
-  std::string GetAppenderName() override { return "LogAppenderToStd"; }
+  std::string GetAppenderName() const override { return "LogAppenderToStd"; }
 };
 
 class LogAppenderToFile : public LogAppender {
@@ -118,7 +118,7 @@ public:
   LogAppenderToFile(std::string filename);
   ~LogAppenderToFile() { ofs_.close(); }
   void Log(LogEvent::ptr event) override;
-  std::string GetAppenderName() override { return "LogAppenderToFile"; }
+  std::string GetAppenderName() const override { return "LogAppenderToFile"; }
 
 private:
   std::string filename_;
@@ -133,8 +133,9 @@ public:
   std::string GetName() const { return name_; };
   LogLevel::Level GetMaxLevel() const { return max_level_; }
   void SetMaxLevel(LogLevel::Level level) { max_level_ = level; }
-  LogLevel::Level GetMaxLevel() { return max_level_; }
-  std::string GetMaxLevelToString() { return LogLevel::ToString(max_level_); }
+  std::string GetMaxLevelToString() const {
+    return LogLevel::ToString(max_level_);
+  }
   void AddAppender(LogAppender::ptr appender);
   void DelAppender(LogAppender::ptr appender);
   void CheckAppenders();
