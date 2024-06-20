@@ -1,0 +1,35 @@
+Person1:
+  name: miku
+  sex: female
+  age: 15
+Person2:
+  name: yui
+  sex: female
+  age: 15
+
+map1:
+  Person_map1: 
+    name: yuki
+    sex: female
+    age: 15
+map2:
+  Person_map2:
+    name: haru
+    sex: female
+    age: 15
+
+map_vec:
+  Person_vec1:
+    - name: asuna
+      sex: female
+      age: 15
+    - name: luna
+      sex: female
+      age: 15
+  Person_vec2:
+    - name: saika
+      sex: female
+      age: 15
+    - name: shiki
+      sex: female
+      age: 15

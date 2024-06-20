@@ -1,0 +1,23 @@
+# root node is map
+logs:
+  # logs node is sequence
+  - name: root
+    level: info
+    formatter: "%d%T%m"
+    appenders:
+      - type: LogAppenderToFile
+        file: ./logs/root_log.txt
+      - type: LogAppenderToStd
+        file: std
+  - name: system
+    level: info
+    formatter: "%d%T%m"
+    appenders:
+      - type: LogAppenderToFile
+        file: ./logs/root_log.txt
+      - type: LogAppenderToStd
+        file: std
+  # system node is map
+system:
+  port: 9090
+  value: 20

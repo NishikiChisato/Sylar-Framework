@@ -1,0 +1,8 @@
+language: en
+regon: jp
+tcp:
+  timeout: 
+    connection: 2000
+    request: 100
+  keep-alive: on
+  max-connection: 1000
