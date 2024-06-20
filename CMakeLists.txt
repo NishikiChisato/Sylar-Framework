@@ -24,11 +24,17 @@ FetchContent_MakeAvailable(googletest)
 # add_executable(example unit_test.cc) target_link_libraries(example gtest_main)
 # add_test(NAME example_test COMMAND example)
 
+find_library(YAMLCPP yaml-cpp)
+
 enable_testing()
 add_executable(singleton_test tests/singleton_test.cc)
 target_link_libraries(singleton_test gtest_main)
 add_test(NAME singleton_test COMMAND singleton_test)
 
-add_executable(log_test tests/log_test.cc)
+add_executable(log_test tests/log_test.cc src/log.cc)
 target_link_libraries(log_test gtest_main)
 add_test(NAME log_test COMMAND log_test)
+
+add_executable(config_test tests/config_test.cc src/config.cc src/log.cc)
+target_link_libraries(config_test gtest_main ${YAMLCPP})
+add_test(NAME config_test COMMAND config_test)
