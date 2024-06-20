@@ -4,6 +4,7 @@
 #include "log.h"
 #include <boost/core/demangle.hpp>
 #include <boost/lexical_cast.hpp>
+#include <functional>
 #include <iostream>
 #include <list>
 #include <map>
@@ -234,13 +235,18 @@ template <class T, class ToStr = LexicalCast<T, std::string>,
 class ConfigVar : public ConfigVarBase {
 public:
   typedef std::shared_ptr<ConfigVar> ptr;
+  typedef std::function<void(const T &old_val, const T &new_val)>
+      changeCallback;
+  typedef std::map<uint64_t, changeCallback> callbackMap;
+
   ConfigVar(const std::string &name = "", const T &val = T(),
             const std::string &dscp = "")
       : ConfigVarBase(name, dscp), value_(val) {}
 
   bool FromString(const std::string &str) override {
     try {
-      value_ = FromStr()(str);
+      // value_ = FromStr()(str);
+      SetValue(FromStr()(str));
       return true;
     } catch (std::exception &e) {
       SYLAR_WARN_LOG(SYLAR_LOG_ROOT)
@@ -267,10 +273,31 @@ public:
   }
 
   T GetValue() const { return value_; }
-  void SetValue(const T &val) { value_ = val; }
+
+  void SetValue(const T &val) {
+    if (val == value_) {
+      return;
+    }
+    // iterator callback function, pass old value and new value
+    for (auto &item : callback_func_map_) {
+      item.second(value_, val);
+    }
+    value_ = val;
+  }
+
+  void AddListener(uint64_t key, changeCallback func) {
+    callback_func_map_[key] = func;
+  }
+
+  void DelListener(uint64_t key) { callback_func_map_.erase(key); }
+
+  changeCallback GetListener(uint64_t key) { return callback_func_map_[key]; }
+
+  void ClearListener() { callback_func_map_.clear(); }
 
 private:
   T value_;
+  callbackMap callback_func_map_;
 };
 
 // used to manage config variables

@@ -273,6 +273,10 @@ public:
   int age_;
 };
 
+bool operator==(const Person &lhs, const Person &rhs) {
+  return lhs.name_ == rhs.name_ && lhs.sex_ == rhs.sex_ && lhs.age_ == rhs.age_;
+}
+
 // partical specialize
 template <> class Sylar::LexicalCast<std::string, Person> {
 public:
@@ -369,4 +373,21 @@ TEST(Config, CompositeType) {
   std::cout << p4->GetName() << ": " << p4->ToString() << std::endl;
   std::cout << p5->GetName() << ": " << p5->ToString() << std::endl;
   std::cout << p6->GetName() << ": " << p6->ToString() << std::endl;
+}
+
+TEST(ConfigVariable, CallbackFuncBasic) {
+  // change variable value
+  g_language->SetValue("cn");
+  g_language->AddListener(0, [](const std::string &l, const std::string &r) {
+    SYLAR_INFO_LOG(SYLAR_LOG_ROOT)
+        << "language value change from " << l << " to " << r;
+  });
+  YAML::Node root = YAML::LoadFile("../tests/yaml/config_composite_type.yaml");
+  Sylar::Config::LoadFromYaml(root);
+
+  g_language->SetValue("en");
+
+  Sylar::ConfigVar<std::string>::ptr p =
+      Sylar::Config::Lookup("language", std::string(), "");
+  std::cout << p->GetName() << ": " << p->ToString() << std::endl;
 }
