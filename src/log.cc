@@ -80,6 +80,14 @@ void Logger::Log(LogEvent::ptr event) {
   }
 }
 
+void Logger::Flush(LogEvent::ptr event) {
+  for (auto &it : appenders_) {
+    if (max_level_ >= event->GetLogLevel()) {
+      it->Flush();
+    }
+  }
+}
+
 void Logger::CheckAppenders() {
   for (auto &it : appenders_) {
     std::cout << it->GetAppenderName() << std::endl;
@@ -238,6 +246,7 @@ std::string LogFormatter::Format(LogEvent::ptr event) {
 
 LoggerManager::LoggerManager() {
   root_.reset(new Logger("root"));
+  root_->SetMaxLevel(LogLevel::FATAL);
   root_->AddAppender(LogAppenderToStd::ptr(new LogAppenderToStd()));
   loggers_[root_->GetName()] = root_;
 }

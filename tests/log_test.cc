@@ -1,4 +1,4 @@
-#include "../src/log.cc"
+#include "../src/include/log.h"
 #include <cstdio>
 #include <fstream>
 #include <gtest/gtest.h>
@@ -239,4 +239,7 @@ TEST(LogModule, TypicalUsage2) {
   SYLAR_FMT_DEBUG_LOG(lg, "this is format style message");
 }
 
-TEST(LogModule, TypicalUsage3) { SYLAR_DEBUG_LOG(SYLAR_LOG_ROOT); }
+TEST(LogModule, TypicalUsage3) {
+  SYLAR_DEBUG_LOG(SYLAR_LOG_ROOT);
+  SYLAR_DEBUG_LOG(SYLAR_LOG_ROOT) << "another message";
+}

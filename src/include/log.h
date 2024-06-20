@@ -13,6 +13,9 @@
 #include <mutex>
 #include <sstream>
 #include <string>
+#include <sys/syscall.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <vector>
 
 namespace Sylar {
@@ -90,6 +93,9 @@ private:
 class LogAppender {
 public:
   typedef std::shared_ptr<LogAppender> ptr;
+  LogAppender()
+      : formatter_(new LogFormatter(
+            "%d{%Y-%m-%d %H:%M:%S}%T%u%T%t%T%F%T[%p]%T[%c]%T%f:%l%T%m%n")) {}
   virtual ~LogAppender() {}
 
   /**
@@ -98,9 +104,8 @@ public:
    */
   virtual void Log(LogEvent::ptr event) = 0;
   virtual std::string GetAppenderName() const = 0;
-  LogAppender()
-      : formatter_(new LogFormatter(
-            "%d{%Y-%m-%d %H:%M:%S}%T%u%T%t%T%F%T[%p]%T[%c]%T%f:%l%T%m%n")) {}
+  virtual void Flush() = 0;
+
   void SetFormatter(LogFormatter::ptr format) { formatter_ = format; }
 
 protected:
@@ -111,6 +116,7 @@ class LogAppenderToStd : public LogAppender {
 public:
   void Log(LogEvent::ptr event) override;
   std::string GetAppenderName() const override { return "LogAppenderToStd"; }
+  void Flush() override { std::cout.flush(); }
 };
 
 class LogAppenderToFile : public LogAppender {
@@ -119,6 +125,7 @@ public:
   ~LogAppenderToFile() { ofs_.close(); }
   void Log(LogEvent::ptr event) override;
   std::string GetAppenderName() const override { return "LogAppenderToFile"; }
+  void Flush() override { ofs_.flush(); }
 
 private:
   std::string filename_;
@@ -140,6 +147,7 @@ public:
   void DelAppender(LogAppender::ptr appender);
   void CheckAppenders();
   void Log(LogEvent::ptr event);
+  void Flush(LogEvent::ptr event);
 
 private:
   std::string name_;
@@ -150,7 +158,10 @@ private:
 class LogEventWrapper {
 public:
   LogEventWrapper(Logger::ptr lg, LogEvent::ptr ev) : logger_(lg), event_(ev) {}
-  ~LogEventWrapper() { logger_->Log(event_); }
+  ~LogEventWrapper() {
+    logger_->Log(event_);
+    logger_->Flush(event_);
+  }
   std::stringstream &GetStream() { return event_->GetStream(); }
   LogEvent::ptr GetEvent() { return event_; }
 
