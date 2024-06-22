@@ -26,15 +26,41 @@ FetchContent_MakeAvailable(googletest)
 
 find_library(YAMLCPP yaml-cpp)
 
+set(ALL_LIB 
+        gtest_main 
+        ${YAMLCPP}
+)
+
+set(ALL_SRC_FILE 
+        src/log.cc 
+        src/config.cc
+)
+
+set(ALL_TEST_FILE 
+        tests/singleton_test.cc 
+        tests/log_test.cc 
+        tests/config_test.cc
+)
+
+set(LOG_MODULE
+        src/log
+        src/config.cc
+)
+
+set(CONFIG_MODULE
+        src/log.cc
+        src/config.cc
+)
+
 enable_testing()
 add_executable(singleton_test tests/singleton_test.cc)
 target_link_libraries(singleton_test gtest_main)
 add_test(NAME singleton_test COMMAND singleton_test)
 
-add_executable(log_test tests/log_test.cc src/log.cc)
-target_link_libraries(log_test gtest_main)
+add_executable(log_test tests/log_test.cc ${LOG_MODULE})
+target_link_libraries(log_test ${ALL_LIB})
 add_test(NAME log_test COMMAND log_test)
 
-add_executable(config_test tests/config_test.cc src/config.cc src/log.cc)
-target_link_libraries(config_test gtest_main ${YAMLCPP})
+add_executable(config_test tests/config_test.cc ${CONFIG_MODULE})
+target_link_libraries(config_test ${ALL_LIB})
 add_test(NAME config_test COMMAND config_test)
