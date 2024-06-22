@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.14)
 
+set(CMAKE_C_COMPILER "/usr/bin/clang-14")
+set(CMAKE_CXX_COMPILER "/usr/bin/clang++-14")
+
 project(Sylar)
 
 if(CMAKE_BUILD_TYPE STREQUAL Debug)
@@ -25,15 +28,19 @@ FetchContent_MakeAvailable(googletest)
 # add_test(NAME example_test COMMAND example)
 
 find_library(YAMLCPP yaml-cpp)
+find_library(PTHREAD pthread)
 
-set(ALL_LIB 
+set(ALL_LIBS 
         gtest_main 
         ${YAMLCPP}
+        ${PTHREAD}
 )
 
-set(ALL_SRC_FILE 
+set(ALL_SRC 
         src/log.cc 
         src/config.cc
+        src/thread.cc
+        src/mutex.cc
 )
 
 set(ALL_TEST_FILE 
@@ -43,8 +50,7 @@ set(ALL_TEST_FILE
 )
 
 set(LOG_MODULE
-        src/log
-        src/config.cc
+        src/log.cc
 )
 
 set(CONFIG_MODULE
@@ -52,15 +58,24 @@ set(CONFIG_MODULE
         src/config.cc
 )
 
+set(THREAD_MODULE 
+        src/thread.cc
+        src/mutex.cc
+)
+
 enable_testing()
+
 add_executable(singleton_test tests/singleton_test.cc)
 target_link_libraries(singleton_test gtest_main)
 add_test(NAME singleton_test COMMAND singleton_test)
 
 add_executable(log_test tests/log_test.cc ${LOG_MODULE})
-target_link_libraries(log_test ${ALL_LIB})
+target_link_libraries(log_test ${ALL_LIBS})
 add_test(NAME log_test COMMAND log_test)
 
-add_executable(config_test tests/config_test.cc ${CONFIG_MODULE})
-target_link_libraries(config_test ${ALL_LIB})
+add_executable(config_test tests/config_test.cc ${ALL_SRC})
+target_link_libraries(config_test ${ALL_LIBS})
 add_test(NAME config_test COMMAND config_test)
+
+add_executable(thread_test tests/thread_test.cc ${ALL_SRC})
+target_link_libraries(thread_test ${ALL_LIBS})
