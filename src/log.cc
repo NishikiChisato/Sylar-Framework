@@ -26,6 +26,23 @@ std::string LogLevel::ToString(LogLevel::Level level) {
   }
 }
 
+LogLevel::Level LogLevel::FromString(const std::string &str) {
+  std::string s = str;
+  std::transform(s.begin(), s.end(), s.begin(), ::toupper);
+#define XX(l, name)                                                            \
+  if (#l == name) {                                                            \
+    return LogLevel::l;                                                        \
+  }
+
+  XX(DEBUG, s);
+  XX(INFO, s);
+  XX(WARN, s);
+  XX(ERROR, s);
+  XX(FATAL, s);
+#undef XX
+  return LogLevel::UNKNOW;
+}
+
 // LogEvent
 LogEvent::LogEvent(std::string name, std::string filename,
                    LogLevel::Level level, uint32_t line, uint32_t eplase,
@@ -245,17 +262,17 @@ std::string LogFormatter::Format(LogEvent::ptr event) {
 // LoggerManager
 
 LoggerManager::LoggerManager() {
-  root_.reset(new Logger("root"));
-  root_->SetMaxLevel(LogLevel::FATAL);
-  root_->AddAppender(LogAppenderToStd::ptr(new LogAppenderToStd()));
-  loggers_[root_->GetName()] = root_;
+  GetRootLogger()->SetMaxLevel(LogLevel::FATAL);
+  GetRootLogger()->AddAppender(LogAppenderToStd::ptr(new LogAppenderToStd()));
+  loggers_[GetRootLogger()->GetName()] = GetRootLogger();
 }
 
 Logger::ptr LoggerManager::GetLogger(const std::string &name) {
   std::lock_guard<std::mutex> l(mu_);
   auto it = loggers_.find(name);
   if (it == loggers_.end()) {
-    return root_;
+    throw std::invalid_argument(name);
+    return nullptr;
   } else {
     return it->second;
   }
@@ -267,6 +284,7 @@ Logger::ptr LoggerManager::NewLogger(const std::string &name) {
   if (it == loggers_.end()) {
     Logger::ptr lg(new Logger(name));
     lg->AddAppender(LogAppenderToStd::ptr(new LogAppenderToStd()));
+    loggers_[lg->GetName()] = lg;
     return lg;
   } else {
     return it->second;

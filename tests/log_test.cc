@@ -16,6 +16,14 @@ TEST(LogLevel, LogLevelToString) {
   EXPECT_EQ(Sylar::LogLevel::ToString(Sylar::LogLevel::FATAL), "FATAL");
 }
 
+TEST(LogLevel, LogLevelFromString) {
+  EXPECT_EQ(Sylar::LogLevel::FromString("debug"), Sylar::LogLevel::DEBUG);
+  EXPECT_EQ(Sylar::LogLevel::FromString("info"), Sylar::LogLevel::INFO);
+  EXPECT_EQ(Sylar::LogLevel::FromString("warn"), Sylar::LogLevel::WARN);
+  EXPECT_EQ(Sylar::LogLevel::FromString("error"), Sylar::LogLevel::ERROR);
+  EXPECT_EQ(Sylar::LogLevel::FromString("fatal"), Sylar::LogLevel::FATAL);
+}
+
 TEST(LogAppender, LogFunction) {
   Sylar::LogAppenderToStd().Log(Sylar::LogEvent::ptr(
       new Sylar::LogEvent("root", __FILE__, Sylar::LogLevel::DEBUG, __LINE__, 0,

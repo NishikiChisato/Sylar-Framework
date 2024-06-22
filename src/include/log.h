@@ -32,6 +32,7 @@ public:
   };
 
   static std::string ToString(LogLevel::Level);
+  static LogLevel::Level FromString(const std::string &);
 };
 
 class LogEvent {
@@ -170,6 +171,24 @@ private:
   LogEvent::ptr event_;
 };
 
+class LoggerManager {
+public:
+  LoggerManager();
+  Logger::ptr GetRoot() { return GetRootLogger(); }
+  Logger::ptr GetLogger(const std::string &name);
+  Logger::ptr NewLogger(const std::string &name);
+
+private:
+  static Logger::ptr &GetRootLogger() {
+    static Logger::ptr root_(new Logger("root"));
+    return root_;
+  }
+  std::map<std::string, Logger::ptr> loggers_;
+  std::mutex mu_;
+};
+
+typedef Sylar::SingletonPtr<LoggerManager> LoggerMgr;
+
 #define SYLAR_LOG(logger, level)                                               \
   if (logger->GetMaxLevel() >= level)                                          \
   Sylar::LogEventWrapper(logger,                                               \
@@ -220,21 +239,6 @@ private:
  * it will help us to delete comma before __VA_ARGS__
  *
  */
-
-class LoggerManager {
-public:
-  LoggerManager();
-  Logger::ptr GetRoot() { return root_; }
-  Logger::ptr GetLogger(const std::string &name);
-  Logger::ptr NewLogger(const std::string &name);
-
-private:
-  Logger::ptr root_;
-  std::map<std::string, Logger::ptr> loggers_;
-  std::mutex mu_;
-};
-
-typedef Sylar::SingletonPtr<LoggerManager> LoggerMgr;
 
 // FormatterItem class
 class MessageFormatterItem : public LogFormatter::FormatterItem {
