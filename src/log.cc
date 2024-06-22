@@ -4,6 +4,9 @@
 #include <functional>
 #include <iostream>
 #include <map>
+#include <set>
+#include <vector>
+#include <yaml-cpp/yaml.h>
 
 namespace Sylar {
 
@@ -289,6 +292,31 @@ Logger::ptr LoggerManager::NewLogger(const std::string &name) {
   } else {
     return it->second;
   }
+}
+
+void LoggerManager::DelLogger(const std::string &name) {
+  std::lock_guard<std::mutex> l(mu_);
+  if (loggers_.find(name) == loggers_.end()) {
+    return;
+  }
+  loggers_.erase(name);
+}
+
+// the following part implement the connection between log module and config
+// variable module
+
+bool operator==(const LogAppenderConf &lhs, const LogAppenderConf &rhs) {
+  return lhs.type_ == rhs.type_ && lhs.file_ == rhs.file_ &&
+         lhs.formatter_ == rhs.formatter_;
+}
+
+bool operator==(const LoggerConf &lhs, const LoggerConf &rhs) {
+  return lhs.name_ == rhs.name_ && lhs.level_ == rhs.level_ &&
+         lhs.appenders_ == rhs.appenders_;
+}
+
+bool operator<(const LoggerConf &lhs, const LoggerConf &rhs) {
+  return lhs.name_ < rhs.name_;
 }
 
 } // namespace Sylar

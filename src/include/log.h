@@ -11,6 +11,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <sstream>
 #include <string>
 #include <sys/syscall.h>
@@ -177,6 +178,7 @@ public:
   Logger::ptr GetRoot() { return GetRootLogger(); }
   Logger::ptr GetLogger(const std::string &name);
   Logger::ptr NewLogger(const std::string &name);
+  void DelLogger(const std::string &name);
 
 private:
   static Logger::ptr &GetRootLogger() {
@@ -231,14 +233,36 @@ typedef Sylar::SingletonPtr<LoggerManager> LoggerMgr;
 #define SYLAR_FMT_FATAL_LOG(logger, fmt, ...)                                  \
   SYLAR_FMT_LOG(logger, Sylar::LogLevel::FATAL, fmt, ##__VA_ARGS__)
 
-#define SYLAR_LOG_ROOT Sylar::LoggerMgr::GetInstance()->GetRoot()
-
 /**
  * maybe we only pass one parameter, in this scenario, if we write Format(fmt,
  * __VA_ARGS__), we cannot complie success. we must add ## before __VA_ARGS__,
  * it will help us to delete comma before __VA_ARGS__
  *
  */
+
+#define SYLAR_LOG_ROOT Sylar::LoggerMgr::GetInstance()->GetRoot()
+
+#define SYLAR_LOG_NAME(name) Sylar::LoggerMgr::GetInstance()->GetLogger(name);
+
+class LogAppenderConf {
+public:
+  std::string type_;      // LogAppenderToStd or LogAppenderToFile
+  std::string file_;      // null equivanlent to std and other file path
+  std::string formatter_; // format pattern
+};
+
+bool operator==(const LogAppenderConf &lhs, const LogAppenderConf &rhs);
+
+class LoggerConf {
+public:
+  std::string name_;  //  the name of logger
+  std::string level_; // log level
+  std::vector<LogAppenderConf> appenders_;
+};
+
+bool operator==(const LoggerConf &lhs, const LoggerConf &rhs);
+
+bool operator<(const LoggerConf &lhs, const LoggerConf &rhs);
 
 // FormatterItem class
 class MessageFormatterItem : public LogFormatter::FormatterItem {

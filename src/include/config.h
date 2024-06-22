@@ -228,6 +228,80 @@ public:
   }
 };
 
+template <> class LexicalCast<std::string, LoggerConf> {
+public:
+  LoggerConf operator()(const std::string &str) {
+    YAML::Node node = YAML::Load(str);
+    LoggerConf lc;
+
+    if (!node["name"].IsDefined()) {
+      throw std::logic_error("log config logic error: name is not defined");
+    }
+    lc.name_ = node["name"].as<std::string>();
+
+    if (!node["level"].IsDefined()) {
+      throw std::logic_error("log config logic error: level is not defined");
+    }
+    lc.level_ = LogLevel::ToString(
+        LogLevel::FromString(node["level"].as<std::string>()));
+
+    if (!node["appenders"].IsDefined()) {
+      throw std::logic_error(
+          "log config logic error: appenders is not defined");
+    } else if (!node["appenders"].IsSequence()) {
+      throw std::logic_error(
+          "log config logic error: appenders is not sequence");
+    }
+
+    for (int i = 0; i < node["appenders"].size(); i++) {
+      LogAppenderConf lac;
+      if (!node["appenders"][i]["type"].IsDefined()) {
+        throw std::logic_error(
+            "log config logic error: appenders's type is not defined");
+      }
+      lac.type_ = node["appenders"][i]["type"].as<std::string>();
+      std::transform(lac.type_.begin(), lac.type_.end(), lac.type_.begin(),
+                     ::tolower);
+
+      if (node["appenders"][i]["formatter"].IsDefined()) {
+        lac.formatter_ = node["appenders"][i]["formatter"].as<std::string>();
+      }
+
+      if (node["appenders"][i]["file"].IsDefined()) {
+        lac.file_ = node["appenders"][i]["file"].as<std::string>();
+      }
+
+      lc.appenders_.push_back(lac);
+    }
+    return lc;
+  }
+};
+
+template <> class LexicalCast<LoggerConf, std::string> {
+public:
+  std::string operator()(const LoggerConf &lc) {
+    YAML::Node node;
+    node["name"] = lc.name_;
+    node["level"] = lc.level_;
+    for (auto &i : lc.appenders_) {
+      YAML::Node sub;
+      if (!i.type_.empty()) {
+        sub["type"] = i.type_;
+      }
+      if (!i.formatter_.empty()) {
+        sub["formatter"] = i.formatter_;
+      }
+      if (!i.file_.empty()) {
+        sub["file"] = i.file_;
+      }
+      node["appenders"].push_back(sub);
+    }
+    std::stringstream ss;
+    ss << node;
+    return ss.str();
+  }
+};
+
 // since the type of value is different, this class should be declare to
 // template class.
 template <class T, class ToStr = LexicalCast<T, std::string>,
@@ -375,6 +449,11 @@ private:
     return conf_vars;
   }
 };
+
+// config variable declaration
+
+static ConfigVar<std::set<LoggerConf>>::ptr g_log_set = Config::Lookup(
+    "logs", std::set<LoggerConf>(), "the set of pre-defined logs");
 
 } // namespace Sylar
 

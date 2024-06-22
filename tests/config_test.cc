@@ -391,3 +391,25 @@ TEST(ConfigVariable, CallbackFuncBasic) {
       Sylar::Config::Lookup("language", std::string(), "");
   std::cout << p->GetName() << ": " << p->ToString() << std::endl;
 }
+
+TEST(Config, SupportLogModule) {
+  YAML::Node node = YAML::LoadFile("../conf/log.yaml");
+  Sylar::Config::LoadFromYaml(node);
+  auto p1 = Sylar::Config::Lookup("logs", std::set<Sylar::LoggerConf>(), "");
+  std::cout << p1->GetName() << ": " << p1->ToString() << std::endl;
+
+  Sylar::LoggerConf lf;
+  lf.name_ = "another";
+  lf.level_ = Sylar::LogLevel::ToString(Sylar::LogLevel::INFO);
+  Sylar::LogAppenderConf lcf;
+  lcf.type_ = "LogAppenderToStd";
+  lf.appenders_.push_back(lcf);
+
+  std::set<Sylar::LoggerConf> slf;
+  slf.insert(lf);
+
+  std::cout << Sylar::g_log_set->ToString() << std::endl;
+  Sylar::g_log_set->SetValue(slf);
+  std::cout << "log config changed" << std::endl;
+  std::cout << Sylar::g_log_set->ToString() << std::endl;
+}
