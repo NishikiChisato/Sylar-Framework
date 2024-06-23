@@ -69,40 +69,53 @@ void Config::YamlToList(const std::string &prefix, const YAML::Node &node,
 class LogConfInit {
 public:
   LogConfInit() {
+    LoggerConf lc;
+    lc.name_ = "root";
+    lc.level_ = LogLevel::ToString(LogLevel::FATAL);
+    LogAppenderConf lac;
+    lac.type_ = "logappendertostd";
+    lc.appenders_.push_back(lac);
+    std::set<LoggerConf> log_set;
+    log_set.insert(lc);
+    g_log_set->SetValue(log_set);
+
     g_log_set->AddListener(1, [&](const std::set<LoggerConf> &old_val,
                                   const std::set<LoggerConf> &new_val) {
       for (auto &i : old_val) {
-        if (new_val.find(i) == new_val.end()) {
-          LoggerMgr::GetInstance()->DelLogger(i.name_);
-          SYLAR_INFO_LOG(SYLAR_LOG_ROOT) << "log delete: " << i.name_;
-        }
+        LoggerMgr::GetInstance()->DelLogger(i.name_);
       }
       for (auto &i : new_val) {
-        if (old_val.find(i) == old_val.end()) {
-          SYLAR_INFO_LOG(SYLAR_LOG_ROOT) << "log add: " << i.name_;
+        SYLAR_INFO_LOG(SYLAR_LOG_ROOT) << "log add: " << i.name_;
 
-          LoggerMgr::GetInstance()->NewLogger(i.name_);
-          auto lg = LoggerMgr::GetInstance()->GetLogger(i.name_);
-          lg->SetMaxLevel(LogLevel::FromString(i.level_));
-          for (auto &j : i.appenders_) {
-            std::string formatter;
-            if (!j.formatter_.empty()) {
-              formatter = j.formatter_;
+        LoggerMgr::GetInstance()->NewLogger(i.name_);
+        auto lg = LoggerMgr::GetInstance()->GetLogger(i.name_);
+        lg->SetMaxLevel(LogLevel::FromString(i.level_));
+        for (auto &j : i.appenders_) {
+          std::string formatter = j.formatter_;
+          if (j.type_ == "logappendertostd") {
+            LogAppenderToStd::ptr apd(new LogAppenderToStd());
+            LogFormatter::ptr fmt;
+            if (formatter.empty()) {
+              fmt.reset(new LogFormatter());
+            } else {
+              fmt.reset(new LogFormatter(formatter));
             }
-            if (!formatter.empty()) {
-              if (j.type_ == "logappendertostd") {
-                LogAppenderToStd::ptr apd(new LogAppenderToStd());
-                LogFormatter::ptr fmt(new LogFormatter(formatter));
-                apd->SetFormatter(fmt);
-                lg->AddAppender(apd);
-              } else if (j.type_ == "logappendertofile" && !j.file_.empty()) {
-                LogAppenderToFile::ptr apd(new LogAppenderToFile(j.file_));
-                LogFormatter::ptr fmt(new LogFormatter(formatter));
-                apd->SetFormatter(fmt);
-                lg->AddAppender(apd);
-              }
+            apd->SetFormatter(fmt);
+            lg->AddAppender(apd);
+          } else if (j.type_ == "logappendertofile" && !j.file_.empty()) {
+            LogAppenderToFile::ptr apd(new LogAppenderToFile(j.file_));
+            LogFormatter::ptr fmt;
+            if (formatter.empty()) {
+              fmt.reset(new LogFormatter());
+            } else {
+              fmt.reset(new LogFormatter(formatter));
             }
+            apd->SetFormatter(fmt);
+            lg->AddAppender(apd);
           }
+        }
+        if (i.name_ == "root") {
+          LoggerMgr::GetInstance()->SetRoot(lg);
         }
       }
     });

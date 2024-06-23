@@ -1,5 +1,6 @@
 #include "include/log.h"
 #include <ctime>
+#include <filesystem>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -72,19 +73,48 @@ void LogAppenderToStd::Log(LogEvent::ptr event) {
 
 LogAppenderToFile::LogAppenderToFile(std::string filename)
     : filename_(filename) {
-  ofs_.open(filename_, std::ios::out | std::ios::ate);
+  Reopen();
+}
+
+void LogAppenderToFile::Reopen() {
+  if (ofs_.is_open()) {
+    ofs_.close();
+  }
+  std::filesystem::path file_path(filename_);
+  std::filesystem::path dir_path = file_path.parent_path();
+  if (!dir_path.empty() && !std::filesystem::exists(dir_path)) {
+    if (!std::filesystem::create_directories(dir_path)) {
+      std::cerr << "file path create failed" << std::endl;
+    }
+  }
+
+  ofs_.open(file_path);
+  if (!ofs_) {
+    std::cerr << "file: " << filename_ << " open failed" << std::endl;
+    std::cerr.flush();
+  }
 }
 
 void LogAppenderToFile::Log(LogEvent::ptr event) {
+  if (!std::filesystem::exists(filename_)) {
+    std::string err = std::string("file: ") + filename_ +
+                      std::string(" is deleted, try to reopen it");
+    std::cerr << err << std::endl;
+    Reopen();
+  }
   ofs_ << formatter_->Format(event);
 }
 
 // Logger
 Logger::Logger(std::string name) : name_(name), max_level_(LogLevel::DEBUG) {}
 
-void Logger::AddAppender(LogAppender::ptr item) { appenders_.push_back(item); }
+void Logger::AddAppender(LogAppender::ptr item) {
+  SpinLock::ScopeLock l(mu_);
+  appenders_.push_back(item);
+}
 
 void Logger::DelAppender(LogAppender::ptr item) {
+  SpinLock::ScopeLock l(mu_);
   for (auto it = appenders_.begin(); it != appenders_.end(); ++it) {
     if (*it == item) {
       appenders_.erase(it);
@@ -93,6 +123,7 @@ void Logger::DelAppender(LogAppender::ptr item) {
 }
 
 void Logger::Log(LogEvent::ptr event) {
+  SpinLock::ScopeLock l(mu_);
   for (auto &it : appenders_) {
     if (max_level_ >= event->GetLogLevel()) {
       it->Log(event);
@@ -101,6 +132,7 @@ void Logger::Log(LogEvent::ptr event) {
 }
 
 void Logger::Flush(LogEvent::ptr event) {
+  SpinLock::ScopeLock l(mu_);
   for (auto &it : appenders_) {
     if (max_level_ >= event->GetLogLevel()) {
       it->Flush();
@@ -109,6 +141,7 @@ void Logger::Flush(LogEvent::ptr event) {
 }
 
 void Logger::CheckAppenders() {
+  SpinLock::ScopeLock l(mu_);
   for (auto &it : appenders_) {
     std::cout << it->GetAppenderName() << std::endl;
   }
@@ -265,9 +298,10 @@ std::string LogFormatter::Format(LogEvent::ptr event) {
 // LoggerManager
 
 LoggerManager::LoggerManager() {
-  GetRootLogger()->SetMaxLevel(LogLevel::FATAL);
-  GetRootLogger()->AddAppender(LogAppenderToStd::ptr(new LogAppenderToStd()));
-  loggers_[GetRootLogger()->GetName()] = GetRootLogger();
+  root_.reset(new Logger("root"));
+  root_->SetMaxLevel(LogLevel::FATAL);
+  root_->AddAppender(LogAppenderToStd::ptr(new LogAppenderToStd()));
+  loggers_[root_->GetName()] = root_;
 }
 
 Logger::ptr LoggerManager::GetLogger(const std::string &name) {
@@ -286,7 +320,6 @@ Logger::ptr LoggerManager::NewLogger(const std::string &name) {
   auto it = loggers_.find(name);
   if (it == loggers_.end()) {
     Logger::ptr lg(new Logger(name));
-    lg->AddAppender(LogAppenderToStd::ptr(new LogAppenderToStd()));
     loggers_[lg->GetName()] = lg;
     return lg;
   } else {

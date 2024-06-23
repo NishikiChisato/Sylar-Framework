@@ -1,6 +1,7 @@
 #ifndef __SYLAR_LOG_H__
 #define __SYLAR_LOG_H__
 
+#include "mutex.h"
 #include "singleton.h"
 #include <cstdarg>
 #include <cstdint>
@@ -78,7 +79,9 @@ public:
     virtual void Format(std::ostream &os, LogEvent::ptr event) = 0;
   };
 
-  LogFormatter(std::string pattern);
+  LogFormatter(
+      std::string pattern =
+          "%d{%Y-%m-%d %H:%M:%S}%T%u%T%t%T%F%T[%p]%T[%c]%T%f:%l%T%m%n");
   std::string Format(LogEvent::ptr event);
 
 #ifdef DEBUGMODE
@@ -124,12 +127,17 @@ public:
 class LogAppenderToFile : public LogAppender {
 public:
   LogAppenderToFile(std::string filename);
-  ~LogAppenderToFile() { ofs_.close(); }
+  ~LogAppenderToFile() {
+    if (ofs_.is_open()) {
+      ofs_.close();
+    }
+  }
   void Log(LogEvent::ptr event) override;
   std::string GetAppenderName() const override { return "LogAppenderToFile"; }
   void Flush() override { ofs_.flush(); }
 
 private:
+  void Reopen();
   std::string filename_;
   std::ofstream ofs_;
 };
@@ -152,6 +160,7 @@ public:
   void Flush(LogEvent::ptr event);
 
 private:
+  SpinLock mu_;
   std::string name_;
   LogLevel::Level max_level_; // the max level that this logger can output
   std::list<LogAppender::ptr> appenders_;
@@ -160,10 +169,7 @@ private:
 class LogEventWrapper {
 public:
   LogEventWrapper(Logger::ptr lg, LogEvent::ptr ev) : logger_(lg), event_(ev) {}
-  ~LogEventWrapper() {
-    logger_->Log(event_);
-    logger_->Flush(event_);
-  }
+  ~LogEventWrapper() { logger_->Log(event_); }
   std::stringstream &GetStream() { return event_->GetStream(); }
   LogEvent::ptr GetEvent() { return event_; }
 
@@ -175,16 +181,14 @@ private:
 class LoggerManager {
 public:
   LoggerManager();
-  Logger::ptr GetRoot() { return GetRootLogger(); }
+  Logger::ptr GetRoot() { return root_; }
+  void SetRoot(Logger::ptr p) { root_ = p; }
   Logger::ptr GetLogger(const std::string &name);
   Logger::ptr NewLogger(const std::string &name);
   void DelLogger(const std::string &name);
 
 private:
-  static Logger::ptr &GetRootLogger() {
-    static Logger::ptr root_(new Logger("root"));
-    return root_;
-  }
+  Logger::ptr root_;
   std::map<std::string, Logger::ptr> loggers_;
   std::mutex mu_;
 };
@@ -242,7 +246,7 @@ typedef Sylar::SingletonPtr<LoggerManager> LoggerMgr;
 
 #define SYLAR_LOG_ROOT Sylar::LoggerMgr::GetInstance()->GetRoot()
 
-#define SYLAR_LOG_NAME(name) Sylar::LoggerMgr::GetInstance()->GetLogger(name);
+#define SYLAR_LOG_NAME(name) Sylar::LoggerMgr::GetInstance()->GetLogger(name)
 
 class LogAppenderConf {
 public:

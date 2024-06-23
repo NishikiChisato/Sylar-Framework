@@ -1,11 +1,6 @@
 logs:
-  - name: root
-    level: info
-    appenders:
-      - type: LogAppenderToStd
-      - type: LogAppenderToFile
-        file: ./logs/root.log
   - name: system
     level: info
     appenders:
-      - type: LogAppenderToStd
+      - type: LogAppenderToFile
+        file: ./logs/root.log
