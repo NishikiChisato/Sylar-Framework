@@ -93,14 +93,16 @@ The typical usage process is as follows:
 First, you must define config variable in **global namespace**.
 
 ```cpp
-Sylar::ConfigVar<std::string>::ptr g_tcp_timeout_connection = Sylar::Config::Lookup("tcp.timeout.connection", std::string(), "");
+Sylar::ConfigVar<std::string>::ptr g_tcp_timeout_connection = 
+        Sylar::Config::Lookup("tcp.timeout.connection", std::string(), "");
 ```
 
 Second, in the plate that you want to read config variable from yaml file, you can get this config variable.
 
 ```cpp
 void LoadConfig() {
-  Sylar::ConfigVar<std::string>::ptr p3 = Sylar::Config::Lookup("tcp.timeout.connection", std::string(), "");
+  Sylar::ConfigVar<std::string>::ptr p3 = 
+        Sylar::Config::Lookup("tcp.timeout.connection", std::string(), "");
   // or you can directly use g_tcp_timeout_connection
 } 
 ```

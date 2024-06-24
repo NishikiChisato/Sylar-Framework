@@ -1,6 +1,4 @@
-#include <sys/syscall.h>
-#include <sys/types.h>
-#include <unistd.h>
+#include "include/util.h"
 
 namespace Sylar {
 
@@ -9,5 +7,39 @@ pid_t GetProcessId() { return syscall(SYS_getpid); }
 
 // return thread id
 pid_t GetThreadId() { return syscall(SYS_gettid); }
+
+/**
+ * @brief used to get backtrace information
+ *
+ * @param bt return vector, used to store string
+ * @param sz the max size of stack
+ * @param skip skip the number of stack
+ */
+void BackTrace(std::vector<std::string> &bt, int sz, int skip) {
+  void **array = (void **)malloc(sizeof(void *) * sz);
+  size_t s = ::backtrace(array, sz);
+  char **str = ::backtrace_symbols(array, s);
+  if (str == NULL) {
+    std::cerr << "BackTrace error" << std::endl;
+    free(array);
+    free(str);
+    return;
+  }
+  for (size_t i = skip; i < s; i++) {
+    bt.push_back(str[i]);
+  }
+  free(array);
+  free(str);
+}
+
+std::string BacktraceToString(int sz, int skip, const std::string &prefix) {
+  std::vector<std::string> bt;
+  BackTrace(bt, sz, skip);
+  std::stringstream ss;
+  for (int i = 0; i < bt.size(); i++) {
+    ss << prefix << bt[i] << std::endl;
+  }
+  return ss.str();
+}
 
 } // namespace Sylar

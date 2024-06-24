@@ -41,6 +41,7 @@ set(ALL_SRC
         src/config.cc
         src/thread.cc
         src/mutex.cc
+        src/util.cc
 )
 
 set(ALL_TEST_FILE 
@@ -63,6 +64,10 @@ set(THREAD_MODULE
         src/mutex.cc
 )
 
+set(UTIL 
+        src/util.cc
+)
+
 enable_testing()
 
 add_executable(singleton_test tests/singleton_test.cc)
@@ -79,3 +84,7 @@ add_test(NAME config_test COMMAND config_test)
 
 add_executable(thread_test tests/thread_test.cc ${ALL_SRC})
 target_link_libraries(thread_test ${ALL_LIBS})
+
+add_executable(util_test tests/util_test.cc src/util.cc)
+target_link_libraries(util_test ${ALL_LIBS})
+add_test(NAME util_test COMMAND util_test)

@@ -42,3 +42,48 @@ TEST(Thread, SupportForLogModule) {
   std::filesystem::remove("./logs/root.log");
   std::filesystem::remove("./logs");
 }
+
+int g_cnt = 0, g_all = 1000;
+Sylar::Mutex mu;
+
+void func2() {
+  Sylar::Mutex::ScopeLock l(mu);
+  std::cout << Sylar::Thread::GetName() << " thread is running" << std::endl;
+  for (int i = 0; i < g_all; i++) {
+    g_cnt++;
+  }
+}
+
+void func3() {
+  Sylar::Mutex::ScopeLock l(mu);
+  std::cout << Sylar::Thread::GetName() << " thread is running" << std::endl;
+  for (int i = 0; i < g_all; i++) {
+    g_cnt++;
+  }
+}
+
+void func4(int x) {
+  Sylar::Mutex::ScopeLock l(mu);
+  std::cout << Sylar::Thread::GetName() << " thread is running" << std::endl;
+  for (int i = 0; i < x; i++) {
+    g_cnt++;
+  }
+}
+
+TEST(Thread, Usage) {
+  // basic usage
+  Sylar::Thread::ptr p1(new Sylar::Thread(&func2, "t1"));
+  Sylar::Thread::ptr p2(new Sylar::Thread(&func3, "t2"));
+  p1->Join();
+  p2->Join();
+  EXPECT_EQ(g_cnt, 2 * g_all);
+
+  // use std::bind
+  int cnt = 1000;
+  std::function<void(int)> f = &func4;
+  auto b = std::bind(f, cnt);
+  Sylar::Thread::ptr p3(new Sylar::Thread(b, "t3"));
+
+  p3->Join();
+  EXPECT_EQ(g_cnt, 2 * g_all + cnt);
+}
