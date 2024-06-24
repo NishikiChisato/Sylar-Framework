@@ -1,8 +1,10 @@
 #include "../src/include/config.h"
 #include "../src/include/log.h"
+#include <filesystem>
 #include <gtest/gtest.h>
 #include <list>
 #include <map>
+#include <unistd.h>
 #include <vector>
 
 TEST(ConfigVar, Basic) {
@@ -398,6 +400,11 @@ TEST(Config, SupportLogModule) {
   auto p1 = Sylar::Config::Lookup("logs", std::set<Sylar::LoggerConf>(), "");
   std::cout << p1->GetName() << ": " << p1->ToString() << std::endl;
 
+  SYLAR_INFO_LOG(SYLAR_LOG_NAME("system")) << "system log message";
+
+  std::filesystem::remove("./logs/root.log");
+  std::filesystem::remove("./logs");
+
   Sylar::LoggerConf lf;
   lf.name_ = "another";
   lf.level_ = Sylar::LogLevel::ToString(Sylar::LogLevel::INFO);
@@ -412,4 +419,6 @@ TEST(Config, SupportLogModule) {
   Sylar::g_log_set->SetValue(slf);
   std::cout << "log config changed" << std::endl;
   std::cout << Sylar::g_log_set->ToString() << std::endl;
+
+  SYLAR_INFO_LOG(SYLAR_LOG_NAME("another")) << "another log message";
 }

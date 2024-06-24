@@ -4,3 +4,4 @@ logs:
     appenders:
       - type: LogAppenderToFile
         file: ./logs/root.log
+        formatter: "%m%n"
