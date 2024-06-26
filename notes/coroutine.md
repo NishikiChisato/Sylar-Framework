@@ -61,3 +61,12 @@ Notes:
 
 The interpretation of `ucp->uc_stack` is just as in `sigaltstack(2)`, namely, this struct contains the start and length of a memory area to be used as the stack, regardless of the direction of growth of the stack.  Thus, it is not necessary for the user program to worry about this direction.
 
+## The Design of Coroutine
+
+We define two static thread_local smart pointer: `t_cur_coroutine` and `t_main_coroutine`. These two pointer separately manage coroutine object, indicating two separated coroutine. When you initialize a coroutine object with parameterized constructor, that object serve as sub-coroutine and main coroutine will separately create in `GetThis()` method. So, when we want to use coroutine, **we must explicitly call `GetThis()` before initializing.**
+
+When we use object to call `SwapIn()` method, the execution flow will swap from main coroutine to sub-coroutine. In actuall execution, we will jump into `MainFunc` function(swap to context of `MainFunc`), the context of `obj.SwapIn()` will store in `t_main_coroutine`. 
+
+Precisely speaking, the context of the method of initializing coroutine should treat to be main coroutine and the context of that coroutine object should treat to be sub-coroutine. 
+
+In this design, we only support two coroutine execution and the execution of these two coroutines always in single thread, they just swap context with each other, instead of access data simutaneously, so we don't need to hold mutex.

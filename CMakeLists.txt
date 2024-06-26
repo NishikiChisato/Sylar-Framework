@@ -42,12 +42,16 @@ set(ALL_SRC
         src/thread.cc
         src/mutex.cc
         src/util.cc
+        src/coroutine.cc
 )
 
 set(ALL_TEST_FILE 
         tests/singleton_test.cc 
         tests/log_test.cc 
         tests/config_test.cc
+        tests/util_test.cc
+        tests/thread_test.cc
+        tests/coroutine_test.cc
 )
 
 set(LOG_MODULE
@@ -66,6 +70,10 @@ set(THREAD_MODULE
 
 set(UTIL 
         src/util.cc
+)
+
+set(COROUTINE_MODULE
+        src/coroutine.cc
 )
 
 enable_testing()
@@ -88,3 +96,7 @@ target_link_libraries(thread_test ${ALL_LIBS})
 add_executable(util_test tests/util_test.cc src/util.cc)
 target_link_libraries(util_test ${ALL_LIBS})
 add_test(NAME util_test COMMAND util_test)
+
+add_executable(coroutine_test tests/coroutine_test.cc ${ALL_SRC})
+target_link_libraries(coroutine_test ${ALL_LIBS})
+add_test(NAME coroutine_test COMMAND coroutine_test)
