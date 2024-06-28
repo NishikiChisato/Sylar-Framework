@@ -1,9 +1,9 @@
 #ifndef __SYLAR_COROUTINE_H__
 #define __SYLAR_COROUTINE_H__
 
-#include "config.h"
-#include "thread.h"
-#include "util.h"
+#include "./config.h"
+#include "./thread.h"
+#include "./util.h"
 #include <atomic>
 #include <functional>
 #include <memory>
@@ -24,6 +24,8 @@ public:
   static void DeAlloc(void *ptr) { free(ptr); }
 };
 
+class Schedule;
+
 class Coroutine : public std::enable_shared_from_this<Coroutine> {
 public:
   typedef std::shared_ptr<Coroutine> ptr;
@@ -38,7 +40,14 @@ public:
   };
 
 public:
-  Coroutine(const std::function<void()> &f, uint64_t stack_size = 0);
+  /**
+   * @brief Construct a new Coroutine object
+   *
+   * @param use_caller this parameter is only meaningful when current coroutine
+   * perform schedule
+   */
+  Coroutine(const std::function<void()> &f, uint64_t stack_size = 0,
+            bool use_caller = false);
 
   /**
    * we should destory main coroutine and sub-coroutine. the former not has
@@ -54,7 +63,7 @@ public:
   /**
    * create main coroutine
    */
-  static void CreateMainCo();
+  static Coroutine::ptr CreateMainCo();
 
   void Resume();
 
@@ -80,6 +89,16 @@ public:
    */
   static uint64_t GetCoroutineId();
 
+  /**
+   * @brief Get the State of coroutine
+   */
+  State GetState() { return state_; }
+
+  /**
+   * used to get current coroutine, usually used in user-defined function
+   */
+  static Coroutine::ptr GetThis();
+
 private:
   /**
    * used by main coroutine, swap to execute sub-coroutine
@@ -103,11 +122,6 @@ private:
    * function
    */
   static void SetThis(Coroutine::ptr ptr);
-
-  /**
-   * used to get current coroutine, usually used in user-defined function
-   */
-  static Coroutine::ptr GetThis();
 
   /**
    * we should let default constructor is private, public constructor must pass
@@ -136,12 +150,15 @@ private:
    */
   static void MainFunc();
 
+  static void GlobalFunc();
+
   uint64_t cid_;                   // coroutine id
   State state_ = INIT;             // the state of coroutine
   ucontext_t ctx_;                 // the context of coroutine
   void *stack_pt_ = nullptr;       // the pointer of current stack
   uint64_t stack_sz_ = 0;          // the size of stack of coroutine
   std::function<void()> callback_; // callback function
+  bool perform_schedule_ = false;
 };
 
 } // namespace Sylar
