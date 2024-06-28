@@ -28,6 +28,8 @@ public:
 
   void Join();
 
+  pid_t GetThreadId() { return tid_; }
+
 private:
   pid_t tid_ = -1;                 // thread id
   pthread_t thread_ = 0;           // the struct of thread, not thread id
