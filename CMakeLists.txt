@@ -3,7 +3,10 @@ cmake_minimum_required(VERSION 3.14)
 set(CMAKE_C_COMPILER "/usr/bin/clang-14")
 set(CMAKE_CXX_COMPILER "/usr/bin/clang++-14")
 
-project(Sylar)
+project(Sylar LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED true)
 
 if(CMAKE_BUILD_TYPE STREQUAL Debug)
   add_definitions(-DDEBUGMODE)
@@ -43,6 +46,7 @@ set(ALL_SRC
         src/mutex.cc
         src/util.cc
         src/coroutine.cc
+        src/schedule.cc
 )
 
 set(ALL_TEST_FILE 
@@ -52,6 +56,7 @@ set(ALL_TEST_FILE
         tests/util_test.cc
         tests/thread_test.cc
         tests/coroutine_test.cc
+        tests/schedule_test.cc
 )
 
 set(LOG_MODULE
@@ -63,17 +68,24 @@ set(CONFIG_MODULE
         src/config.cc
 )
 
+set(UTIL_MODULE 
+        src/util.cc
+)
+
 set(THREAD_MODULE 
+        ${LOG_MODULE}
+        ${CONFIG_MODULE}
+        ${UTIL_MODULE}
         src/thread.cc
         src/mutex.cc
 )
 
-set(UTIL 
-        src/util.cc
-)
-
 set(COROUTINE_MODULE
         src/coroutine.cc
+)
+
+set(SCHEDULE_MODULE 
+        src/schedule.cc
 )
 
 enable_testing()
@@ -86,11 +98,11 @@ add_executable(log_test tests/log_test.cc ${LOG_MODULE})
 target_link_libraries(log_test ${ALL_LIBS})
 add_test(NAME log_test COMMAND log_test)
 
-add_executable(config_test tests/config_test.cc ${ALL_SRC})
+add_executable(config_test tests/config_test.cc ${CONFIG_MODULE})
 target_link_libraries(config_test ${ALL_LIBS})
 add_test(NAME config_test COMMAND config_test)
 
-add_executable(thread_test tests/thread_test.cc ${ALL_SRC})
+add_executable(thread_test tests/thread_test.cc ${THREAD_MODULE})
 target_link_libraries(thread_test ${ALL_LIBS})
 
 add_executable(util_test tests/util_test.cc src/util.cc)
@@ -100,3 +112,7 @@ add_test(NAME util_test COMMAND util_test)
 add_executable(coroutine_test tests/coroutine_test.cc ${ALL_SRC})
 target_link_libraries(coroutine_test ${ALL_LIBS})
 add_test(NAME coroutine_test COMMAND coroutine_test)
+
+add_executable(schedule_test tests/schedule_test.cc ${ALL_SRC})
+target_link_libraries(schedule_test ${ALL_LIBS})
+add_test(NAME schedule_test COMMAND schedule_test)
