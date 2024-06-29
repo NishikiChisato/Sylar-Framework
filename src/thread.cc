@@ -42,7 +42,7 @@ void Thread::Join() {
   int rt = pthread_join(thread_, nullptr);
   if (rt) {
     SYLAR_ERROR_LOG(SYLAR_LOG_ROOT)
-        << "pthread_create error with rt: " << rt << std::endl;
+        << "pthread_join error with rt: " << rt << std::endl;
     std::logic_error("Thread::Join pthread_join error");
   }
 }
