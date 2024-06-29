@@ -18,8 +18,6 @@ Schedule::Schedule(size_t threads, bool use_caller, const std::string &name)
     root_coroutine_ = std::make_shared<Coroutine>(
         std::bind(&Schedule::Run, this), 64 * 1024, true);
     root_thread_id_ = GetThreadId();
-
-    thread_ids_.push_back(root_thread_id_);
   } else {
     root_thread_id_ = -1;
   }
@@ -42,13 +40,16 @@ void Schedule::Start() {
   if (!is_stoped_) {
     return;
   }
+  is_stoped_ = false;
   SYLAR_ASSERT(threads_.empty());
   threads_.resize(thread_num_);
   for (int i = 0; i < thread_num_; i++) {
+    // threads_[i] = std::make_shared<Thread>(std::bind(&Schedule::Run, this),
+    // std::string("thread_") + std::to_string(i));
+    // thread_ids_.push_back(threads_[i]->GetThreadId());
     threads_[i] =
-        std::make_shared<Thread>(std::bind(&Schedule::Run, this),
-                                 std::string("thread_") + std::to_string(i));
-    thread_ids_.push_back(threads_[i]->GetThreadId());
+        std::make_shared<std::thread>(std::bind(&Schedule::Run, this));
+    thread_ids_.push_back(threads_[i]->get_id());
   }
 }
 
@@ -70,23 +71,26 @@ void Schedule::Stop() {
   }
 
   // wait for each thread to exit, it will block in this place
-  std::vector<Thread::ptr> vthrs;
+  std::vector<std::shared_ptr<std::thread>> vthrs;
   {
     Mutex::ScopeLock l(mu_);
     vthrs.swap(threads_);
   }
   for (auto &i : vthrs) {
-    i->Join();
+    if (i->joinable()) {
+      i->join();
+    }
   }
 }
 
 void Schedule::Run() {
-  Coroutine::ptr idel_co(
-      new Coroutine(std::bind(&Schedule::Idel, this), 64 * 1024, false));
   Coroutine::ptr co_task;
   CoroutineTask ct;
   while (!IsStop()) {
     ct.Reset();
+    Coroutine::CreateMainCo();
+    Coroutine::ptr idel_co(
+        new Coroutine(std::bind(&Schedule::Idel, this), 64 * 1024, false));
 
     {
       Mutex::ScopeLock l(mu_);
@@ -124,10 +128,6 @@ void Schedule::Run() {
       co_task.reset();
     } else {
       // task has run out, this coroutine should perform idel method
-      if (idel_co->GetState() == Coroutine::TERM) {
-        // idel coroutine exit, means that scheduler stops
-        break;
-      }
       idel_thread_num_++;
       idel_co->Resume();
       idel_thread_num_--;
@@ -140,8 +140,7 @@ bool Schedule::IsStop() {
 }
 
 void Schedule::Idel() {
-  if (IsStop()) {
-    std::cout << "idel execute" << std::endl;
+  while (!IsStop()) {
     Sylar::Coroutine::YieldToHold();
   }
 }

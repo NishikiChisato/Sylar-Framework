@@ -10,6 +10,7 @@
 #include <list>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace Sylar {
@@ -122,8 +123,8 @@ private:
 private:
   std::string name_;
   Mutex mu_;
-  std::vector<Thread::ptr> threads_; // therad pool
-  std::list<CoroutineTask> tasks_;   // the task to be execute by coroutine
+  std::vector<std::shared_ptr<std::thread>> threads_; // therad pool
+  std::list<CoroutineTask> tasks_; // the task to be execute by coroutine
 
   /**
    * the following considersion is based on we at most only create one thread.
@@ -156,7 +157,7 @@ private:
   static thread_local Coroutine::ptr t_global_coroutine;
 
 protected:
-  std::vector<int> thread_ids_;              // a vector used to track thread id
+  std::vector<std::thread::id> thread_ids_;  // a vector used to track thread id
   size_t thread_num_;                        // the number of thread
   std::atomic<size_t> active_thread_num_{0}; // the number of active thread
   std::atomic<size_t> idel_thread_num_{0};   // the number of idel thread
