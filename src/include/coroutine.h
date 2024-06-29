@@ -94,6 +94,8 @@ public:
    */
   State GetState() { return state_; }
 
+  void SetState(Coroutine::State st) { state_ = st; }
+
   /**
    * used to get current coroutine, usually used in user-defined function
    */

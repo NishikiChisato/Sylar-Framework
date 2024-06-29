@@ -46,7 +46,8 @@ Coroutine::Coroutine() {
 Coroutine::~Coroutine() {
   if (stack_pt_) {
     // sub-coroutine
-    SYLAR_ASSERT(state_ == INIT || state_ == TERM || state_ == EXCEPT)
+    SYLAR_ASSERT(state_ == INIT || state_ == READY || state_ == TERM ||
+                 state_ == EXCEPT)
     MallocAlloc::DeAlloc(stack_pt_);
   } else {
     // main coroutine
