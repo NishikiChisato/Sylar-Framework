@@ -153,9 +153,10 @@ void Coroutine::MainFunc() {
     cur->callback_();
     cur->callback_ = nullptr;
     cur->state_ = TERM;
-  } catch (...) {
+  } catch (std::exception &e) {
     cur->state_ = EXCEPT;
-    SYLAR_WARN_LOG(SYLAR_LOG_ROOT) << "current coroutine occur exception";
+    SYLAR_WARN_LOG(SYLAR_LOG_ROOT)
+        << "current coroutine occur exception: " << e.what();
   }
 
   auto ptr = cur.get();
