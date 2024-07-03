@@ -33,60 +33,40 @@ FetchContent_MakeAvailable(googletest)
 find_library(YAMLCPP yaml-cpp)
 find_library(PTHREAD pthread)
 
-set(ALL_LIBS 
-        gtest_main 
-        ${YAMLCPP}
-        ${PTHREAD}
-)
+set(ALL_LIBS gtest_main ${YAMLCPP} ${PTHREAD})
 
-set(ALL_SRC 
-        src/log.cc 
-        src/config.cc
-        src/thread.cc
-        src/mutex.cc
-        src/util.cc
-        src/coroutine.cc
-        src/schedule.cc
-)
+set(ALL_SRC
+    src/log.cc
+    src/config.cc
+    src/thread.cc
+    src/mutex.cc
+    src/util.cc
+    src/coroutine.cc
+    src/schedule.cc
+    src/iomanager.cc)
 
-set(ALL_TEST_FILE 
-        tests/singleton_test.cc 
-        tests/log_test.cc 
-        tests/config_test.cc
-        tests/util_test.cc
-        tests/thread_test.cc
-        tests/coroutine_test.cc
-        tests/schedule_test.cc
-)
+set(ALL_TEST_FILE
+    tests/singleton_test.cc
+    tests/log_test.cc
+    tests/config_test.cc
+    tests/util_test.cc
+    tests/thread_test.cc
+    tests/coroutine_test.cc
+    tests/schedule_test.cc
+    tests/iomanager_test.cc)
 
-set(LOG_MODULE
-        src/log.cc
-)
+set(LOG_MODULE src/log.cc)
 
-set(CONFIG_MODULE
-        src/log.cc
-        src/config.cc
-)
+set(CONFIG_MODULE src/log.cc src/config.cc)
 
-set(UTIL_MODULE 
-        src/util.cc
-)
+set(UTIL_MODULE src/util.cc)
 
-set(THREAD_MODULE 
-        ${LOG_MODULE}
-        ${CONFIG_MODULE}
-        ${UTIL_MODULE}
-        src/thread.cc
-        src/mutex.cc
-)
+set(THREAD_MODULE ${LOG_MODULE} ${CONFIG_MODULE} ${UTIL_MODULE} src/thread.cc
+                  src/mutex.cc)
 
-set(COROUTINE_MODULE
-        src/coroutine.cc
-)
+set(COROUTINE_MODULE src/coroutine.cc)
 
-set(SCHEDULE_MODULE 
-        src/schedule.cc
-)
+set(SCHEDULE_MODULE src/schedule.cc)
 
 enable_testing()
 
@@ -116,3 +96,7 @@ add_test(NAME coroutine_test COMMAND coroutine_test)
 add_executable(schedule_test tests/schedule_test.cc ${ALL_SRC})
 target_link_libraries(schedule_test ${ALL_LIBS})
 add_test(NAME schedule_test COMMAND schedule_test)
+
+add_executable(iomanager_test tests/iomanager_test.cc ${ALL_SRC})
+target_link_libraries(iomanager_test ${ALL_LIBS})
+add_test(NAME iomanager_test COMMAND iomanager_test)
