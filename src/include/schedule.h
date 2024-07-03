@@ -62,9 +62,9 @@ public:
    *
    * @param ptr pass this pointer
    */
-  void SetThis(const Schedule::ptr &ptr) { t_schedule = ptr; }
+  void SetThis(Schedule *ptr) { t_schedule = ptr; }
 
-  static Schedule::ptr GetThis() { return t_schedule; }
+  static Schedule *GetThis() { return t_schedule; }
 
   static Coroutine::ptr GetGlobalCo() { return t_global_coroutine; }
 
@@ -153,7 +153,7 @@ private:
   Coroutine::ptr root_coroutine_;
   int root_thread_id_; // the thread id of root coroutine
 
-  static thread_local Schedule::ptr t_schedule;
+  static thread_local Schedule *t_schedule;
   static thread_local Coroutine::ptr t_global_coroutine;
 
 protected:
