@@ -8,6 +8,8 @@
       - [TODO](#todo)
     - [Config Module](#config-module)
       - [Basic](#basic-1)
+    - [Mutex Module \& \[Deprecate\]Thread Module \& Util Module](#mutex-module--deprecatethread-module--util-module)
+    - [Coroutine Module](#coroutine-module)
 
 
 ## Build & Testing
@@ -108,4 +110,24 @@ void LoadConfig() {
 ```
 
 Additionally, if you want to define custon type, you must specialize your type, detail usage shown in [`config_test`](./tests/config_test.cc): `Config.CustonType`.
+
+### Mutex Module & [Deprecate]Thread Module & Util Module 
+
+Mutex module wraps and implements some sync and async class.
+
+- Wrapper
+  - `Semaphore`, which wraps `sem_wait` and `sem_post`. 
+  - `Mutex`, which wraps `pthread_mutex_t`.
+  - `Spinlock`, which wraps `pthread_spinlock_t`.
+  - `CASLock`, which wraps `std::atomic_flag`.
+  - `RWMutex`, which wraps `pthread_rwlock_t`.
+- Implementation(lock acquire and release bese on RAII)
+  - `ScopeLockImpl`, which similars to `std::unique_lock`, can automatically lock and unlock.
+  - `ReadScopeLockImpl` and `WriteScopeLockImpl`, which similars to `std::shared_lock`, the former can automatically lock and unlock read lock, the latter can automacally lock and unlock write lock.
+
+Thread module can not satify our demand in coroutine module and schedule module, so we deprecate it.
+
+Util module implement some tools, including get process id, get thread id and so on.
+
+### Coroutine Module
 
