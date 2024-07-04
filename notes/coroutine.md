@@ -1,5 +1,13 @@
 # Coroutine Module
 
+- [Coroutine Module](#coroutine-module)
+  - [Basic](#basic)
+  - [The Design of Coroutine](#the-design-of-coroutine)
+- [Schedule Module](#schedule-module)
+  - [Two Execution Mode](#two-execution-mode)
+  - [The issue of Idel](#the-issue-of-idel)
+
+
 ## Basic
 
 Explanation of this main four function(excerpt from man manual):
@@ -100,4 +108,4 @@ If one thread is idel, it will execute `Idel()` method, this method just yield c
 
 You might say why we don't desing a sort of notify mechanism to notify sleep thread. But it will cause another issue: a thread is idel, it will sleep and wait for notifying, it's good, but if a thread is in idel, it will exit only when task arrives; if a task want to arrive, the idel should exit. It cause deathlock. 
 
-Frankly speaking, this issue cannot be address in current framework, maybe we can think of another wat to alleviate it.
+Frankly speaking, this issue cannot be address in current framework, maybe we can think of another wat to alleviate it. In the section of IO Manager, idel thread can block in `epoll_wait` to wait for file descriptor to be "ready"(ready to read and write), which can alleviate this spin.
