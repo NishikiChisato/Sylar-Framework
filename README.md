@@ -10,8 +10,7 @@
       - [Basic](#basic-1)
     - [Mutex Module \& \[Deprecate\]Thread Module \& Util Module](#mutex-module--deprecatethread-module--util-module)
     - [Coroutine Module](#coroutine-module)
-    - [Scheduler Module](#scheduler-module)
-    - [IO Manager](#io-manager)
+    - [Scheduler/IOManager/Timer](#scheduleriomanagertimer)
 
 
 ## Build & Testing
@@ -177,11 +176,9 @@ void thr1() {
 
 In our design, we must first call `Coroutine::CreateMainCo` to create main coroutine, which represents caller, while the coroutine object represents callee.
 
-### Scheduler Module
+### Scheduler/IOManager/Timer
 
-The scheduler module implement N-M scheduler, which can support N threads to execute M coroutines. We use scheduler to manage the schedule of coroutine(we can wrap function to coroutine, it can also execute function). The inner implementation is a thread pool, the coroutine can indicate one thread to execute or not. 
+The scheduler module implements N-M scheduler, which can support N threads to execute M coroutines. We use scheduler to manage the schedule of coroutine(we can wrap function to coroutine, it can also support function). The inner implementation is a thread pool, the coroutine can indicate one thread to execute or not. 
 
-### IO Manager
-
-Deriving from scheduler, based on `epoll`, the IO Manager can support add/delete/cancel event for one file descriptor
+Deriving from scheduler and timer, based on `epoll`, the IO Manager can support add/delete/cancel event for one file descriptor and set timer event. Timer module support ont-time timer, cycle timer and condition timer. Our timer utilize `epoll_wait` to wait for timer event, since it would not consume the time of CPU.
 
