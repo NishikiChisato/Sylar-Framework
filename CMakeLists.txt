@@ -43,7 +43,9 @@ set(ALL_SRC
     src/util.cc
     src/coroutine.cc
     src/schedule.cc
-    src/iomanager.cc)
+    src/iomanager.cc
+    src/timer.cc
+)
 
 set(ALL_TEST_FILE
     tests/singleton_test.cc
@@ -53,7 +55,8 @@ set(ALL_TEST_FILE
     tests/thread_test.cc
     tests/coroutine_test.cc
     tests/schedule_test.cc
-    tests/iomanager_test.cc)
+    tests/iomanager_test.cc
+)
 
 set(LOG_MODULE src/log.cc)
 
