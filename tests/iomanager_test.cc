@@ -36,28 +36,28 @@ void ReadFunc(int fd) {
   std::cout << str << std::endl;
 }
 
-void BasicTsk(int *pp) {
-  fcntl(pp[0], F_SETFL, O_NONBLOCK);
-  fcntl(pp[1], F_SETFL, O_NONBLOCK);
-  Sylar::IOManager::GetThis()->AddEvent(pp[0], Sylar::IOManager::Event::READ,
-                                        std::bind(&ReadFunc, pp[0]));
+void BasicTsk(int *fifo) {
+  fcntl(fifo[0], F_SETFL, O_NONBLOCK);
+  fcntl(fifo[1], F_SETFL, O_NONBLOCK);
+  Sylar::IOManager::GetThis()->AddEvent(fifo[0], Sylar::IOManager::Event::READ,
+                                        std::bind(&ReadFunc, fifo[0]));
   Sylar::IOManager::GetThis()->AddEvent(
-      pp[1], Sylar::IOManager::Event::WRITE,
+      fifo[1], Sylar::IOManager::Event::WRITE,
       []() { std::cout << "read event tirgger" << std::endl; });
 
-  std::thread t1([&]() { WriteFunc(pp[1], 10); });
+  std::thread t1([&]() { WriteFunc(fifo[1], 10); });
   t1.join();
 }
 
 TEST(IOManager, Basic) {
   Sylar::IOManager iomgr(1, true);
-  int pp[2];
-  pipe(pp);
-  iomgr.ScheduleTask(std::bind(&BasicTsk, pp));
+  int fifo[2];
+  pipe(fifo);
+  iomgr.ScheduleTask(std::bind(&BasicTsk, fifo));
   iomgr.Stop();
 
-  close(pp[0]);
-  close(pp[1]);
+  close(fifo[0]);
+  close(fifo[1]);
 }
 
 Sylar::Mutex read_mu;
@@ -131,3 +131,18 @@ TEST(IOManager, ManyTaskSingleThreadNotUseCaller) { ManyTask(1, false); }
 TEST(IOManager, ManyTaskMultiThreadUseCaller) { ManyTask(25, true); }
 
 TEST(IOManager, ManyTaskMultiThreadNotUseCaller) { ManyTask(25, false); }
+
+TEST(IOManager, TimerBasic) {
+  Sylar::IOManager::ptr iomgr(new Sylar::IOManager());
+  auto now = Sylar::GetElapseFromRebootMS();
+  std::cout << "now = " << now << "ms" << std::endl;
+  iomgr->AddTimer(
+      "timer_1", 1000,
+      []() {
+        std::cout << "timer trigger time = " << Sylar::GetElapseFromRebootMS()
+                  << "ms" << std::endl;
+      },
+      false);
+
+  iomgr->Stop();
+}

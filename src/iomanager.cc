@@ -81,7 +81,7 @@ void IOManager::ExtendFDContext(size_t sz) {
 }
 
 IOManager::IOManager(size_t threads, bool use_caller, const std::string &name)
-    : Schedule(threads, use_caller, name) {
+    : Schedule(threads, use_caller, name), TimeManager() {
   epfd_ = epoll_create1(0);
 
   int ret = pipe(notify_pipe_);
@@ -288,19 +288,37 @@ bool IOManager::CancelAllEvent(int fd) {
 void IOManager::Notify() { write(notify_pipe_[1], "$", 1); }
 
 void IOManager::Idel() {
-  const int64_t MAX_EVENTS = 256;     // maxevents arguement in epoll_wait
-  const int64_t EPOLL_TIMEOUT = 1000; // timeout arguement in epoll_wait
+  const int64_t MAX_EVENTS = 256;      // maxevents arguement in epoll_wait
+  const uint64_t EPOLL_TIMEOUT = 1000; // timeout arguement in epoll_wait
+  uint64_t nxt_timeout = EPOLL_TIMEOUT;
   epoll_event *events = new epoll_event[MAX_EVENTS];
   memset(events, 0, sizeof(epoll_event) * MAX_EVENTS);
   std::shared_ptr<epoll_event> defer_events(events,
                                             [](epoll_event *p) { delete[] p; });
   while (!IsStop()) {
+    int64_t now = GetElapseFromRebootMS();
+    nxt_timeout = GetNextTriggerTime(now);
+    if (nxt_timeout != ~0ull) {
+      nxt_timeout = std::max(10ul, std::min(nxt_timeout, EPOLL_TIMEOUT));
+    } else {
+      nxt_timeout = EPOLL_TIMEOUT;
+    }
+
     // we should block in epoll_wait
-    int cnt = epoll_wait(epfd_, events, MAX_EVENTS, EPOLL_TIMEOUT);
+    int cnt = epoll_wait(epfd_, events, MAX_EVENTS, nxt_timeout);
     if (cnt <= 0) {
       if (errno == EINTR) {
-        // timeout trigger, we should continue
-        SYLAR_INFO_LOG(SYLAR_LOG_ROOT) << "IOManager::Idel idel timeout, exit";
+        // timeout trigger, we should trigger timer
+        SYLAR_INFO_LOG(SYLAR_LOG_ROOT)
+            << "IOManager::Idel idel timeout, try to trigger timer";
+
+        std::vector<std::function<void()>> vfunc;
+        GetAllExpired(now, vfunc);
+        if (!vfunc.empty()) {
+          for (auto &it : vfunc) {
+            ScheduleTask(it);
+          }
+        }
         continue;
       }
 
@@ -311,9 +329,18 @@ void IOManager::Idel() {
        * non-blocking
        */
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        SYLAR_WARN_LOG(SYLAR_LOG_ROOT)
+        SYLAR_INFO_LOG(SYLAR_LOG_ROOT)
             << "IOManager::Idel epoll_wait encounter error: "
             << strerror(errno);
+
+        std::vector<std::function<void()>> vfunc;
+        GetAllExpired(now, vfunc);
+        if (!vfunc.empty()) {
+          for (auto &it : vfunc) {
+            ScheduleTask(it);
+          }
+        }
+
         Coroutine::YieldToHold();
       }
       break;

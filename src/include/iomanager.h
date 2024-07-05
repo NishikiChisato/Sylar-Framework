@@ -4,6 +4,8 @@
 #include "./coroutine.h"
 #include "./mutex.h"
 #include "./schedule.h"
+#include "./timer.h"
+#include <algorithm>
 #include <fcntl.h>
 #include <functional>
 #include <memory>
@@ -16,7 +18,10 @@
 
 namespace Sylar {
 
-class IOManager : public Schedule {
+class Timer;
+class TimeManager;
+
+class IOManager : public Schedule, public TimeManager {
 public:
   typedef std::shared_ptr<IOManager> ptr;
 
@@ -167,7 +172,9 @@ public:
 protected:
   void Notify() override;
   void Idel() override;
-  bool IsStop() override { return pending_event_ == 0 && Schedule::IsStop(); }
+  bool IsStop() override {
+    return pending_event_ == 0 && TimeManager::IsStop() && Schedule::IsStop();
+  }
 
 private:
   int epfd_ = 0;       // the file descriptor of epoll
