@@ -42,4 +42,18 @@ std::string BacktraceToString(int sz, int skip, const std::string &prefix) {
   return ss.str();
 }
 
+uint64_t GetElapseFromRebootMS() {
+  timespec ts{0};
+
+  /**
+   * A nonsettable system-wide clock that represents monotonic time since—as
+   * described by POSIX—"some unspecified point in the past".  On Linux, that
+   * point corresponds to the number of sec‐ onds that the system has been
+   * running since it was booted.
+   */
+
+  clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+  return ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
 } // namespace Sylar

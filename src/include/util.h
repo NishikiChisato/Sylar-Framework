@@ -7,6 +7,7 @@
 #include <sstream>
 #include <string>
 #include <sys/syscall.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <vector>
@@ -31,6 +32,9 @@ pid_t GetProcessId();
 
 // return thread id
 pid_t GetThreadId();
+
+// get time from system reboot
+uint64_t GetElapseFromRebootMS();
 
 void BackTrace(std::vector<std::string> &bt, int sz, int skip);
 
