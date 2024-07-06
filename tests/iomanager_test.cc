@@ -132,6 +132,36 @@ TEST(IOManager, ManyTaskMultiThreadUseCaller) { ManyTask(25, true); }
 
 TEST(IOManager, ManyTaskMultiThreadNotUseCaller) { ManyTask(25, false); }
 
+TEST(IOManager, CancelEvent) {
+  Sylar::IOManager::ptr iomgr(new Sylar::IOManager());
+  iomgr->AddEvent(0, Sylar::IOManager::READ,
+                  []() { std::cout << "read event 1 at 0" << std::endl; });
+
+  iomgr->AddEvent(0, Sylar::IOManager::WRITE,
+                  []() { std::cout << "write event 2 at 0" << std::endl; });
+
+  iomgr->CancelEvent(0, Sylar::IOManager::READ);
+  iomgr->CancelEvent(0, Sylar::IOManager::WRITE);
+
+  iomgr->Stop();
+}
+
+TEST(IOManager, DeleteEvent) {
+  Sylar::IOManager::ptr iomgr(new Sylar::IOManager());
+  iomgr->AddEvent(0, Sylar::IOManager::READ,
+                  []() { std::cout << "read event 1 at 0" << std::endl; });
+
+  iomgr->AddEvent(0, Sylar::IOManager::WRITE,
+                  []() { std::cout << "write event 2 at 0" << std::endl; });
+
+  std::cout << iomgr->ListAllEvent() << std::endl;
+
+  iomgr->DelEvent(0, Sylar::IOManager::READ);
+  iomgr->DelEvent(0, Sylar::IOManager::WRITE);
+
+  std::cout << iomgr->ListAllEvent() << std::endl;
+}
+
 TEST(IOManager, TimerBasic) {
   Sylar::IOManager::ptr iomgr(new Sylar::IOManager());
   auto now = Sylar::GetElapseFromRebootMS();

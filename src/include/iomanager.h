@@ -107,7 +107,7 @@ private:
     EventContext read_ctx_;  // the context of read event
     EventContext write_ctx_; // the context of write event
     int fd_;                 // file descriptor
-    Event event_;            // the event type intersted by file descriptor
+    Event event_ = NONE;     // the event type intersted by file descriptor
     Mutex mu_;
   };
 
@@ -130,6 +130,8 @@ public:
    * @return when successful, return 0; else return 1
    */
   bool AddEvent(int fd, Event event, std::function<void()> func);
+
+  bool AddEvent(int fd, Event event, Coroutine::ptr coroutine);
 
   /**
    * @brief delete some monitoring event from fd. if monitoring event set is
@@ -164,6 +166,8 @@ public:
    * @return when successful, return 0; else return 1
    */
   bool CancelAllEvent(int fd);
+
+  std::string ListAllEvent();
 
   static IOManager *GetThis() {
     return dynamic_cast<IOManager *>(Schedule::GetThis());

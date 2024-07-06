@@ -169,6 +169,60 @@ bool IOManager::AddEvent(int fd, IOManager::Event event,
   return true;
 }
 
+bool IOManager::AddEvent(int fd, IOManager::Event event,
+                         Coroutine::ptr coroutine) {
+  SYLAR_ASSERT(fd >= 0);
+  FDContext *fdctx = nullptr;
+  Mutex::ScopeLock l1(mu_);
+  // extend vector size if necessary
+  if (fd >= fd_context_.size()) {
+    ExtendFDContext(2 * fd);
+  }
+  fdctx = fd_context_[fd];
+  l1.Unlock();
+
+  Mutex::ScopeLock l2(fdctx->mu_);
+  // we cannot add duplicate event to fd
+  if (fdctx->event_ & event) {
+    SYLAR_WARN_LOG(SYLAR_LOG_ROOT) << "IOManager::AddEvent event duplicated";
+    return false;
+  }
+  int op = fdctx->event_ ? EPOLL_CTL_MOD : EPOLL_CTL_ADD;
+  epoll_event ep_event;
+  memset(&ep_event, 0, sizeof(ep_event));
+  ep_event.events = fdctx->event_ | event | EPOLLET;
+  // the data field in epoll_event can used to store additional information, in
+  // this case, we save the pointer of context of fd
+  ep_event.data.ptr = fdctx;
+
+  int ret = epoll_ctl(epfd_, op, fdctx->fd_, &ep_event);
+  if (ret) {
+    SYLAR_WARN_LOG(SYLAR_LOG_ROOT)
+        << "IOManager::AddEvent epoll_ctl error: " << strerror(errno);
+    return false;
+  }
+
+  // we must assign callback function to that fd
+
+  // first, we try to get read context
+  if (event & Event::READ) {
+    auto &rctx = fdctx->GetEventContext((Event)(event & Event::READ));
+    rctx.coroutine_ = coroutine;
+    rctx.scheduler_ = dynamic_cast<Schedule *>(this);
+    SYLAR_ASSERT(rctx.scheduler_);
+    pending_event_++;
+  }
+  if (event & Event::WRITE) {
+    auto &wctx = fdctx->GetEventContext((Event)(event & Event::WRITE));
+    wctx.coroutine_ = coroutine;
+    wctx.scheduler_ = dynamic_cast<Schedule *>(this);
+    SYLAR_ASSERT(wctx.scheduler_);
+    pending_event_++;
+  }
+  fdctx->event_ = (Event)(fdctx->event_ | event);
+  return true;
+}
+
 bool IOManager::DelEvent(int fd, IOManager::Event event) {
   Mutex::ScopeLock l1(mu_);
   if (fd >= fd_context_.size()) {
@@ -178,10 +232,6 @@ bool IOManager::DelEvent(int fd, IOManager::Event event) {
   l1.Unlock();
 
   Mutex::ScopeLock l2(fdctx->mu_);
-  if (fdctx->event_ & event) {
-    SYLAR_WARN_LOG(SYLAR_LOG_ROOT) << "IOManager::DelEvent event duplicated";
-    return false;
-  }
 
   Event left_event = (Event)(fdctx->event_ & ~event);
   int op = left_event ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;
@@ -216,11 +266,11 @@ bool IOManager::CancelEvent(int fd, IOManager::Event event) {
   FDContext *fdctx = fd_context_[fd];
   l1.Unlock();
 
-  Mutex::ScopeLock l2(fdctx->mu_);
-  if (fdctx->event_ & event) {
-    SYLAR_WARN_LOG(SYLAR_LOG_ROOT) << "IOManager::CancelEvent event duplicate";
-    return false;
+  if (!(fdctx->event_ & event)) {
+    return true;
   }
+
+  Mutex::ScopeLock l2(fdctx->mu_);
 
   Event left_event = (Event)(fdctx->event_ & ~event);
   int op = left_event ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;
@@ -283,6 +333,24 @@ bool IOManager::CancelAllEvent(int fd) {
     pending_event_--;
   }
   return true;
+}
+
+std::string IOManager::ListAllEvent() {
+  std::stringstream ss;
+  for (auto &it : fd_context_) {
+    if (it && it->event_ != NONE) {
+      std::stringstream str;
+      str << "[" << it->fd_ << "]: ";
+      if (it->event_ & READ) {
+        str << " READ ";
+      }
+      if (it->event_ & WRITE) {
+        str << " WRITE ";
+      }
+      ss << str.str();
+    }
+  }
+  return ss.str();
 }
 
 void IOManager::Notify() { write(notify_pipe_[1], "$", 1); }
