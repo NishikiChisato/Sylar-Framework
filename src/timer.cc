@@ -64,8 +64,10 @@ bool TimeManager::DetectTimerSetBack(uint64_t now) {
    * the resoulution of now is millisecond, we cannot directly use
    * now < previous_trigger_ to judge current server is set back, we should use
    * a range to judge
+   *
+   * we must convert to int64_t to compare, uint64_t may overflow
    */
-  if (now < previous_trigger_ - (60 * 60 * 1000)) {
+  if ((int64_t)now < (int64_t)previous_trigger_ - (60 * 60 * 1000)) {
     set_back = true;
     previous_trigger_ = now;
   }
@@ -131,6 +133,19 @@ void TimeManager::GetAllExpired(uint64_t now,
       timers_.insert(it);
     }
   }
+}
+
+bool TimeManager::HasExpired() {
+  Mutex::ScopeLock l(mu_);
+  if (timers_.empty()) {
+    return false;
+  }
+  uint64_t now = GetElapseFromRebootMS();
+  auto it = timers_.begin();
+  if (now >= (*it)->next_trigger_) {
+    return true;
+  }
+  return false;
 }
 
 uint64_t TimeManager::GetNextTriggerTime(uint64_t now) {

@@ -307,43 +307,31 @@ void IOManager::Idel() {
     // we should block in epoll_wait
     int cnt = epoll_wait(epfd_, events, MAX_EVENTS, nxt_timeout);
     if (cnt <= 0) {
-      if (errno == EINTR) {
-        // timeout trigger, we should trigger timer
-        SYLAR_INFO_LOG(SYLAR_LOG_ROOT)
-            << "IOManager::Idel idel timeout, try to trigger timer";
-
-        std::vector<std::function<void()>> vfunc;
-        GetAllExpired(now, vfunc);
-        if (!vfunc.empty()) {
-          for (auto &it : vfunc) {
-            ScheduleTask(it);
-          }
-        }
-        continue;
-      }
-
       /**
        * when epoll_wait return -1 and set errno with EAGAIN or EWOULDBLOCK
        *
        * it means that there are no events available, it's common in
        * non-blocking
        */
-      if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        SYLAR_INFO_LOG(SYLAR_LOG_ROOT)
-            << "IOManager::Idel epoll_wait encounter error: "
-            << strerror(errno);
-
-        std::vector<std::function<void()>> vfunc;
-        GetAllExpired(now, vfunc);
-        if (!vfunc.empty()) {
-          for (auto &it : vfunc) {
-            ScheduleTask(it);
+      if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
+        // SYLAR_INFO_LOG(SYLAR_LOG_ROOT) << "IOManager::Idel epoll_wait
+        // encounter error: " << strerror(errno);
+        if (HasExpired()) {
+          std::vector<std::function<void()>> vfunc;
+          GetAllExpired(GetElapseFromRebootMS(), vfunc);
+          if (!vfunc.empty()) {
+            for (auto &it : vfunc) {
+              ScheduleTask(it);
+            }
           }
         }
 
+        /**
+         * may be we have to execute task or timer event, we should exit idel
+         * coroutine
+         */
         Coroutine::YieldToHold();
       }
-      break;
     }
     for (int i = 0; i < cnt; i++) {
       auto &event = events[i];

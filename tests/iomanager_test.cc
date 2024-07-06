@@ -137,12 +137,47 @@ TEST(IOManager, TimerBasic) {
   auto now = Sylar::GetElapseFromRebootMS();
   std::cout << "now = " << now << "ms" << std::endl;
   iomgr->AddTimer(
-      "timer_1", 1000,
-      []() {
-        std::cout << "timer trigger time = " << Sylar::GetElapseFromRebootMS()
-                  << "ms" << std::endl;
+      "timer_1", 5000,
+      [&]() {
+        uint64_t tri = Sylar::GetElapseFromRebootMS();
+        std::cout << "timer_1 trigger time = " << tri
+                  << "ms, distence = " << tri - now << std::endl;
+      },
+      false);
+
+  iomgr->AddTimer(
+      "timer_2", 1000,
+      [&]() {
+        uint64_t tri = Sylar::GetElapseFromRebootMS();
+        std::cout << "timer_2 trigger time = " << tri
+                  << "ms, distence = " << tri - now << std::endl;
+      },
+      false);
+
+  iomgr->AddTimer(
+      "timer_3", 2500,
+      [&]() {
+        uint64_t tri = Sylar::GetElapseFromRebootMS();
+        std::cout << "timer_3 trigger time = " << tri
+                  << "ms, distence = " << tri - now << std::endl;
       },
       false);
 
   iomgr->Stop();
+}
+
+TEST(IOManager, NoHook) {
+  Sylar::IOManager::ptr iom(new Sylar::IOManager(1, false));
+  iom->Start();
+  SYLAR_INFO_LOG(SYLAR_LOG_ROOT) << "start";
+  iom->ScheduleTask([]() {
+    sleep(2);
+    SYLAR_INFO_LOG(SYLAR_LOG_ROOT) << "sleep 2 seconds";
+  });
+  iom->ScheduleTask([]() {
+    sleep(3);
+    SYLAR_INFO_LOG(SYLAR_LOG_ROOT) << "sleep 3 seconds";
+  });
+  iom->Stop();
+  SYLAR_INFO_LOG(SYLAR_LOG_ROOT) << "stop";
 }

@@ -117,6 +117,8 @@ public:
 
   void GetAllExpired(uint64_t now, std::vector<std::function<void()>> &vfunc);
 
+  bool HasExpired();
+
   uint64_t GetNextTriggerTime(uint64_t now);
 
   bool IsStop() { return timers_.empty(); }
