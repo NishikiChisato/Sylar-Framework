@@ -59,35 +59,6 @@ TEST(Schedule, BasicFunc) {
   t2.Join();
 }
 
-void thr3() {
-  g_cnt1 = 0;
-  Sylar::Schedule sc(2, true);
-  Sylar::Coroutine::ptr co1 =
-      std::make_shared<Sylar::Coroutine>(std::bind(&tsk1));
-  sc.Start();
-  sc.ScheduleTask(co1);
-  sc.ScheduleTask(co1);
-  sc.ScheduleTask(co1);
-  sc.ScheduleTask(co1);
-  sc.ScheduleTask(co1);
-  EXPECT_EQ(g_cnt1, 5 * all);
-}
-
-void thr4() {
-  g_cnt2 = 0;
-  Sylar::Schedule sc(2, false);
-  Sylar::Coroutine::ptr co1 =
-      std::make_shared<Sylar::Coroutine>(std::bind(&tsk1));
-  co1->SetState(Sylar::Coroutine::READY);
-  sc.Start();
-  sc.ScheduleTask(co1);
-  sc.ScheduleTask(co1);
-  sc.ScheduleTask(co1);
-  sc.ScheduleTask(co1);
-  sc.ScheduleTask(co1);
-  EXPECT_EQ(g_cnt2, 5 * all);
-}
-
 TEST(Schedule, BasicCoroutine) {
   Sylar::Thread t1(std::bind(&thr1), "t1"), t2(std::bind(&thr2), "t2");
   t1.Join();
