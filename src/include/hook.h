@@ -1,12 +1,16 @@
 #ifndef __SYLAR_HOOK_H__
 #define __SYLAR_HOOK_H__
 
+#include "./fdcontext.h"
+#include "./iomanager.h"
 #include <dlfcn.h>
+#include <stdint.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <time.h>
 #include <unistd.h>
+#include <utility>
 
 namespace Sylar {
 bool GetHookEnable();
@@ -21,19 +25,6 @@ extern sleep_func sleep_f;
 
 typedef int (*usleep_func)(useconds_t);
 extern usleep_func usleep_f;
-
-typedef int (*nanosleep_func)(const struct timespec *, struct timespec *);
-extern nanosleep_func nanosleep_f;
-
-// socket function
-typedef int (*socket_func)(int, int, int);
-extern socket_func socket_f;
-
-typedef int (*connect_func)(int, const struct sockaddr *, socklen_t);
-extern connect_func connect_f;
-
-typedef int (*accept_func)(int, struct sockaddr *, socklen_t *);
-extern accept_func accept_f;
 
 // read function
 typedef ssize_t (*read_func)(int, void *, size_t);
@@ -69,6 +60,7 @@ extern sendto_func sendto_f;
 typedef ssize_t (*sendmsg_func)(int, const struct msghdr *, int);
 extern sendmsg_func sendmsg_f;
 
+// close file
 typedef int (*close_func)(int);
 extern close_func close_f;
 }
