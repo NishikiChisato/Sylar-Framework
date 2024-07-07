@@ -45,6 +45,8 @@ set(ALL_SRC
     src/schedule.cc
     src/iomanager.cc
     src/timer.cc
+    src/fdcontext.cc
+    src/hook.cc
 )
 
 set(ALL_TEST_FILE
@@ -103,3 +105,7 @@ add_test(NAME schedule_test COMMAND schedule_test)
 add_executable(iomanager_test tests/iomanager_test.cc ${ALL_SRC})
 target_link_libraries(iomanager_test ${ALL_LIBS})
 add_test(NAME iomanager_test COMMAND iomanager_test)
+
+add_executable(hook_test tests/hook_test.cc ${ALL_SRC})
+target_link_libraries(hook_test ${ALL_LIBS})
+add_test(NAME hook_test COMMAND hook_test)
