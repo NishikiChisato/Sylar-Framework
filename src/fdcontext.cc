@@ -4,27 +4,8 @@ namespace Sylar {
 
 FDContext::FDContext(int fd)
     : fd_(fd), is_init_(false), is_socket_(false), is_close_(false),
-      is_sys_nonblock_(false), is_user_nonblock_(false), read_timeout_(~0ull),
-      write_timeout_(~0ull) {
+      is_nonblock_(false) {
   Init();
-}
-
-uint64_t FDContext::GetTimeout(int type) {
-  if (type == SO_RCVTIMEO) {
-    return read_timeout_;
-  } else if (type == SO_SNDTIMEO) {
-    return write_timeout_;
-  }
-  return ~0ull;
-}
-
-void FDContext::SetTimeout(int type, uint64_t timeout) {
-  if (type == SO_RCVTIMEO) {
-    read_timeout_ = timeout;
-  } else if (type == SO_SNDTIMEO) {
-    write_timeout_ = timeout;
-  }
-  return;
 }
 
 void FDContext::SetNonBlock(bool v) {
@@ -50,6 +31,32 @@ void FDContext::Init() {
     fcntl(fd_, F_SETFL, flag | O_NONBLOCK);
     is_nonblock_ = true;
   }
+}
+
+FDManager::FDManager() { fds_.resize(64); }
+
+FDContext::ptr FDManager::GetFD(int fd, bool auto_create) {
+  if (fd < 0) {
+    return nullptr;
+  }
+  Mutex::ScopeLock l(mu_);
+  if (fd < fds_.size()) {
+    return fds_[fd];
+  }
+  if (!auto_create) {
+    return nullptr;
+  }
+  fds_.resize(fd * 2);
+  fds_[fd] = std::make_shared<FDContext>(fd);
+  return fds_[fd];
+}
+
+void FDManager::DeleteFD(int fd) {
+  Mutex::ScopeLock l(mu_);
+  if (fd >= fds_.size()) {
+    return;
+  }
+  fds_[fd].reset();
 }
 
 } // namespace Sylar
