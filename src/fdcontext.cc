@@ -3,8 +3,8 @@
 namespace Sylar {
 
 FDContext::FDContext(int fd)
-    : fd_(fd), is_init_(false), is_socket_(false), is_close_(false),
-      is_nonblock_(false) {
+    : fd_(fd), is_init_(false), is_socket_(false), is_fifo_(false),
+      is_close_(false), is_nonblock_(false) {
   Init();
 }
 
@@ -20,15 +20,22 @@ void FDContext::Init() {
   }
   struct stat state;
   if (-1 == fstat(fd_, &state)) {
-    SYLAR_WARN_LOG(SYLAR_LOG_ROOT)
-        << "fstat error on: " << fd_ << ", err is " << strerror(errno);
-  } else {
-    is_init_ = true;
-    is_socket_ = S_ISSOCK(state.st_mode);
+    if (errno == EBADF) {
+      is_close_ = true;
+    }
   }
-  if (is_socket_) {
-    int flag = fcntl(fd_, F_GETFL);
-    fcntl(fd_, F_SETFL, flag | O_NONBLOCK);
+
+  is_init_ = true;
+  if (S_ISSOCK(state.st_mode)) {
+    is_socket_ = true;
+  }
+
+  if (S_ISFIFO(state.st_mode)) {
+    is_fifo_ = true;
+  }
+
+  int flag = fcntl(fd_, F_GETFL);
+  if (flag & O_NONBLOCK) {
     is_nonblock_ = true;
   }
 }

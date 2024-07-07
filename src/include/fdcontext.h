@@ -27,6 +27,8 @@ public:
 
   bool IsSocket() { return is_socket_; }
 
+  bool IsFifo() { return is_fifo_; }
+
   bool IsNonBlock() { return is_nonblock_; }
 
   void SetNonBlock(bool v);
@@ -35,16 +37,17 @@ private:
   void Init();
 
 private:
-  int fd_;           // file descriptor
-  bool is_init_;     // init or not
-  bool is_socket_;   // socket or not
-  bool is_close_;    // close or not
+  int fd_;         // file descriptor
+  bool is_init_;   // init or not
+  bool is_socket_; // socket or not
+  bool is_close_;  // close or not
+  bool is_fifo_;
   bool is_nonblock_; // non-block or not
 };
 
 class FDManager {
 public:
-  FDContext::ptr GetFD(int fd, bool auto_create = false);
+  FDContext::ptr GetFD(int fd, bool auto_create = true);
 
   void DeleteFD(int fd);
 
