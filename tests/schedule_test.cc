@@ -142,3 +142,30 @@ TEST(Schedule, MangTasksWithSingleThreadNoCaller) { ManyTask(1, false); }
 TEST(Schedule, MangTasksWithMultipleThreadUseCaller) { ManyTask(10, true); }
 
 TEST(Schedule, MangTasksWithMultipleThreadNoCaller) { ManyTask(10, false); }
+
+int r_cnt = 0;
+
+void RepeatTsk(Sylar::Schedule *sc) {
+  std::cout << "first execute" << std::endl;
+  r_cnt++;
+  sc->ScheduleTask(Sylar::Coroutine::GetThis());
+  Sylar::Coroutine::YieldToReady();
+  std::cout << "second execute" << std::endl;
+  r_cnt++;
+  sc->ScheduleTask(Sylar::Coroutine::GetThis());
+  Sylar::Coroutine::YieldToReady();
+  std::cout << "third execute" << std::endl;
+  r_cnt++;
+  sc->ScheduleTask(Sylar::Coroutine::GetThis());
+  Sylar::Coroutine::YieldToReady();
+  std::cout << "fourth execute" << std::endl;
+  r_cnt++;
+}
+
+TEST(Schedule, ReSchedule) {
+  Sylar::Schedule::ptr sc(new Sylar::Schedule());
+  sc->Start();
+  sc->ScheduleTask(std::bind(&RepeatTsk, sc.get()));
+  sc->Stop();
+  EXPECT_EQ(r_cnt, 4);
+}
