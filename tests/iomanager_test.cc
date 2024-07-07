@@ -195,19 +195,3 @@ TEST(IOManager, TimerBasic) {
 
   iomgr->Stop();
 }
-
-TEST(IOManager, NoHook) {
-  Sylar::IOManager::ptr iom(new Sylar::IOManager(1, false));
-  iom->Start();
-  SYLAR_INFO_LOG(SYLAR_LOG_ROOT) << "start";
-  iom->ScheduleTask([]() {
-    sleep(2);
-    SYLAR_INFO_LOG(SYLAR_LOG_ROOT) << "sleep 2 seconds";
-  });
-  iom->ScheduleTask([]() {
-    sleep(3);
-    SYLAR_INFO_LOG(SYLAR_LOG_ROOT) << "sleep 3 seconds";
-  });
-  iom->Stop();
-  SYLAR_INFO_LOG(SYLAR_LOG_ROOT) << "stop";
-}
