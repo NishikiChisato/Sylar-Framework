@@ -129,7 +129,7 @@ public:
    * @param [in] func callback function
    * @return when successful, return 0; else return 1
    */
-  bool AddEvent(int fd, Event event, std::function<void()> func);
+  bool AddEvent(int fd, Event event, std::function<void()> func = nullptr);
 
   bool AddEvent(int fd, Event event, Coroutine::ptr coroutine);
 

@@ -38,10 +38,12 @@ static _HookIniter _hook_initer;
 
 template <typename OriginFunc, typename... Args>
 static ssize_t do_io(int fd, OriginFunc func, uint32_t event, Args &&...args) {
+
   if (!Sylar::GetHookEnable()) {
     return func(fd, std::forward<Args>(args)...);
   }
-  auto fdptr = Sylar::FDManager::Instance().GetFD(fd);
+  auto fdptr = Sylar::FDManager::Instance().GetFD(fd, true);
+
   if (!fdptr) {
     return func(fd, std::forward<Args>(args)...);
   }
@@ -49,7 +51,7 @@ static ssize_t do_io(int fd, OriginFunc func, uint32_t event, Args &&...args) {
     errno = EBADF;
     return -1;
   }
-  if (!fdptr->IsSocket() || !fdptr->IsNonBlock()) {
+  if ((!fdptr->IsSocket() && !fdptr->IsFifo()) || !fdptr->IsNonBlock()) {
     return func(fd, std::forward<Args>(args)...);
   }
 
@@ -87,6 +89,7 @@ unsigned int sleep(unsigned int seconds) {
   if (!Sylar::GetHookEnable()) {
     return sleep_f(seconds);
   }
+  SYLAR_INFO_LOG(SYLAR_LOG_ROOT) << "hook sleep execute";
   auto iomgr = Sylar::IOManager::GetThis();
   iomgr->AddTimer("", seconds * 1000, nullptr);
   iomgr->ScheduleTask(Sylar::Coroutine::GetThis());
@@ -98,6 +101,7 @@ int usleep(useconds_t usec) {
   if (!Sylar::GetHookEnable()) {
     return usleep_f(usec);
   }
+  SYLAR_INFO_LOG(SYLAR_LOG_ROOT) << "hook usleep execute";
   auto iomgr = Sylar::IOManager::GetThis();
   iomgr->AddTimer("", usec / 1000, nullptr);
   iomgr->ScheduleTask(Sylar::Coroutine::GetThis());

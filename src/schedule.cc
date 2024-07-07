@@ -5,21 +5,20 @@
 
 namespace Sylar {
 
-thread_local Schedule *Schedule::t_schedule = nullptr;
+Schedule *Schedule::t_schedule = nullptr;
 thread_local Coroutine::ptr Schedule::t_global_coroutine = nullptr;
 
 Schedule::Schedule(size_t threads, bool use_caller, const std::string &name)
     : name_(name) {
   SYLAR_ASSERT(threads > 0);
+  t_schedule = this;
   if (use_caller) {
     threads--;
     // create a new coroutine to schedule task
     Coroutine::CreateMainCo();
     root_coroutine_ = std::make_shared<Coroutine>(
-        std::bind(&Schedule::Run, this), 64 * 1024, true);
+        std::bind(&Schedule::Run, this), 16 * 1024, true);
     root_thread_id_ = GetThreadId();
-
-    t_schedule = this;
   } else {
     root_thread_id_ = -1;
   }
@@ -86,7 +85,7 @@ void Schedule::Run() {
     ct.Reset();
     Coroutine::CreateMainCo();
     Coroutine::ptr idel_co(
-        new Coroutine(std::bind(&Schedule::Idel, this), 1024 * 1024, false));
+        new Coroutine(std::bind(&Schedule::Idel, this), 16 * 1024, false));
 
     {
       Mutex::ScopeLock l(mu_);
@@ -116,7 +115,7 @@ void Schedule::Run() {
       if (co_task) {
         co_task->Reset(ct.f_);
       } else {
-        co_task = std::make_shared<Coroutine>(ct.f_, 1024 * 1024, false);
+        co_task = std::make_shared<Coroutine>(ct.f_, 16 * 1024, false);
       }
       co_task->Resume();
       active_thread_num_--;

@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 
 TEST(Hook, WithHook) {
-  Sylar::IOManager::ptr iom(new Sylar::IOManager(1, true));
+  Sylar::IOManager::ptr iom(new Sylar::IOManager(1, false));
   iom->Start();
   SYLAR_INFO_LOG(SYLAR_LOG_ROOT) << "start";
   iom->ScheduleTask([]() {
@@ -22,7 +22,7 @@ TEST(Hook, WithHook) {
 
 TEST(Hook, WithoutHook) {
   Sylar::SetHookEnable(false);
-  Sylar::IOManager::ptr iom(new Sylar::IOManager(1, true));
+  Sylar::IOManager::ptr iom(new Sylar::IOManager(1, false));
   iom->Start();
   SYLAR_INFO_LOG(SYLAR_LOG_ROOT) << "start";
   iom->ScheduleTask([]() {

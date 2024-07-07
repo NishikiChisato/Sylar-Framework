@@ -3,6 +3,7 @@
 
 #include "./fdcontext.h"
 #include "./iomanager.h"
+#include "./log.h"
 #include <dlfcn.h>
 #include <stdint.h>
 #include <sys/socket.h>
