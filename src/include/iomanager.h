@@ -104,6 +104,8 @@ private:
       return ss.str();
     }
 
+    bool HasEvent();
+
     EventContext read_ctx_;  // the context of read event
     EventContext write_ctx_; // the context of write event
     int fd_;                 // file descriptor

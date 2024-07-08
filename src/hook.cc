@@ -152,4 +152,19 @@ ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
 ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags) {
   return Sylar::do_io(sockfd, sendmsg_f, Sylar::IOManager::WRITE, msg, flags);
 }
+
+int close(int fd) {
+  if (!Sylar::GetHookEnable()) {
+    return close_f(fd);
+  }
+  auto fdptr = Sylar::FDManager::Instance().GetFD(fd);
+  if (fdptr) {
+    auto iomgr = Sylar::IOManager::GetThis();
+    if (iomgr) {
+      iomgr->CancelAllEvent(fd);
+    }
+    Sylar::FDManager::Instance().DeleteFD(fd);
+  }
+  return close_f(fd);
+}
 }

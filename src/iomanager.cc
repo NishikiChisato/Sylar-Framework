@@ -54,6 +54,10 @@ void IOManager::FDContext::TriggerEvent(IOManager::Event event) {
   }
 }
 
+bool IOManager::FDContext::HasEvent() {
+  return (event_ & READ) | (event_ & WRITE);
+}
+
 std::string IOManager::EventToString(Event event) {
   switch (event) {
 
@@ -232,6 +236,9 @@ bool IOManager::DelEvent(int fd, IOManager::Event event) {
   l1.Unlock();
 
   Mutex::ScopeLock l2(fdctx->mu_);
+  if (!fdctx->HasEvent()) {
+    return true;
+  }
 
   Event left_event = (Event)(fdctx->event_ & ~event);
   int op = left_event ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;
@@ -266,11 +273,13 @@ bool IOManager::CancelEvent(int fd, IOManager::Event event) {
   FDContext *fdctx = fd_context_[fd];
   l1.Unlock();
 
+  Mutex::ScopeLock l2(fdctx->mu_);
   if (!(fdctx->event_ & event)) {
     return true;
   }
-
-  Mutex::ScopeLock l2(fdctx->mu_);
+  if (!fdctx->HasEvent()) {
+    return true;
+  }
 
   Event left_event = (Event)(fdctx->event_ & ~event);
   int op = left_event ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;
@@ -309,6 +318,9 @@ bool IOManager::CancelAllEvent(int fd) {
   l1.Unlock();
 
   Mutex::ScopeLock l2(fdctx->mu_);
+  if (!fdctx->HasEvent()) {
+    return true;
+  }
 
   int op = EPOLL_CTL_DEL;
   epoll_event ep_event;
