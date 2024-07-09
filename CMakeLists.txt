@@ -47,6 +47,7 @@ set(ALL_SRC
     src/timer.cc
     src/fdcontext.cc
     src/hook.cc
+    src/address.cc
 )
 
 set(ALL_TEST_FILE
@@ -58,6 +59,7 @@ set(ALL_TEST_FILE
     tests/coroutine_test.cc
     tests/schedule_test.cc
     tests/iomanager_test.cc
+    tests/address_test.cc
 )
 
 set(LOG_MODULE src/log.cc)
@@ -109,3 +111,7 @@ add_test(NAME iomanager_test COMMAND iomanager_test)
 add_executable(hook_test tests/hook_test.cc ${ALL_SRC})
 target_link_libraries(hook_test ${ALL_LIBS})
 add_test(NAME hook_test COMMAND hook_test)
+
+add_executable(address_test tests/address_test.cc ${ALL_SRC})
+target_link_libraries(address_test ${ALL_LIBS})
+add_test(NAME address_test COMMAND address_test)
