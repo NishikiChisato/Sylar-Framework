@@ -74,8 +74,9 @@ public:
    * @return Address pointer if success; otherwise return nullptr
    */
   static std::shared_ptr<IPAddress> LookupAnyIPAddress(const std::string &host,
-                                                       int family, int type,
-                                                       int protocol);
+                                                       int family = AF_INET,
+                                                       int type = SOCK_STREAM,
+                                                       int protocol = 0);
 
   virtual ~Address() {}
 
