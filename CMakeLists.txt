@@ -12,6 +12,10 @@ if(CMAKE_BUILD_TYPE STREQUAL Debug)
   add_definitions(-DDEBUGMODE)
 endif()
 
+# Enable AddressSanitizer
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
+# set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -fsanitize=address")
+
 # gtest framework
 
 include(FetchContent)
@@ -49,6 +53,7 @@ set(ALL_SRC
     src/hook.cc
     src/address.cc
     src/socket.cc
+    src/bytearray.cc
 )
 
 set(ALL_TEST_FILE
@@ -62,6 +67,7 @@ set(ALL_TEST_FILE
     tests/iomanager_test.cc
     tests/address_test.cc
     tests/socket_test.cc
+    tests/bytearray_test.cc
 )
 
 set(LOG_MODULE src/log.cc)
@@ -121,3 +127,7 @@ add_test(NAME address_test COMMAND address_test)
 add_executable(socket_test tests/socket_test.cc ${ALL_SRC})
 target_link_libraries(socket_test ${ALL_LIBS})
 add_test(NAME socket_test COMMAND socket_test)
+
+add_executable(bytearray_test tests/bytearray_test.cc ${ALL_SRC})
+target_link_libraries(bytearray_test ${ALL_LIBS})
+add_test(NAME bytearray_test COMMAND bytearray_test)
