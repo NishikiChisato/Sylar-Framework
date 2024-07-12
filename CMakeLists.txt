@@ -37,7 +37,12 @@ FetchContent_MakeAvailable(googletest)
 find_library(YAMLCPP yaml-cpp)
 find_library(PTHREAD pthread)
 
-set(ALL_LIBS gtest_main ${YAMLCPP} ${PTHREAD})
+set(ALL_LIBS 
+    dl
+    gtest_main 
+    ${YAMLCPP} 
+    ${PTHREAD}
+)
 
 set(ALL_SRC
     src/log.cc
