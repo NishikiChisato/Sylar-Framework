@@ -98,6 +98,39 @@ TEST(ByteArray, IntReadWriteFixed) {
   auto v10 = ba->ReadFloat();
   auto v11 = ba->ReadDouble();
 
+  std::cout << "=====Memory dump output=====" << std::endl;
+  ba->Dump();
+
+  std::cout << "=====Bit stream output=====" << std::endl;
+  std::string s = ba->BitsStream();
+  int cnt = 0;
+  for (unsigned char c : s) {
+    // std::bitset<8> bit(c);
+    // std::cout << bit << std::endl;
+    std::cout << std::hex << +c << ' ';
+    cnt++;
+    if (cnt && cnt % 8 == 0) {
+      std::cout << std::endl;
+    }
+  }
+  std::cout << std::endl;
+
+  std::cout << "=====iov output=====" << std::endl;
+  auto iov = ba->GetAllBits();
+  std::string buf;
+  buf.resize(iov->iov_len);
+  memcpy(&buf[0], iov->iov_base, iov->iov_len);
+
+  cnt = 0;
+  for (unsigned char c : s) {
+    std::cout << std::hex << +c << ' ';
+    cnt++;
+    if (cnt && cnt % 8 == 0) {
+      std::cout << std::endl;
+    }
+  }
+  std::cout << std::endl;
+
   EXPECT_EQ(v1, 1);
   EXPECT_EQ(v2, 2);
   EXPECT_EQ(v3, 3);
@@ -153,6 +186,23 @@ TEST(ByteArray, IntReadWriteVarint) {
       std::cout << std::endl;
     }
   }
+  std::cout << std::endl;
+
+  std::cout << "=====iov output=====" << std::endl;
+  auto iov = ba->GetAllBits();
+  std::string buf;
+  buf.resize(iov->iov_len);
+  memcpy(&buf[0], iov->iov_base, iov->iov_len);
+
+  cnt = 0;
+  for (unsigned char c : s) {
+    std::cout << std::hex << +c << ' ';
+    cnt++;
+    if (cnt && cnt % 8 == 0) {
+      std::cout << std::endl;
+    }
+  }
+  std::cout << std::endl;
 
   EXPECT_EQ(v1, 1);
   EXPECT_EQ(v2, 2);

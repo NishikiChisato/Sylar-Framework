@@ -4,11 +4,13 @@
 #include "./endian.hh"
 #include <bitset>
 #include <cstring>
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <stdint.h>
+#include <sys/socket.h>
 #include <type_traits>
 #include <vector>
 
@@ -57,6 +59,8 @@ public:
    * all content of byte array to file or network
    */
   std::string BitsStream();
+
+  std::unique_ptr<iovec, std::function<void(iovec *)>> GetAllBits();
 
   template <typename T> void WriteAny(const T &val, bool isFixed = false) {
     if (std::is_same<T, uint8_t>::value) {

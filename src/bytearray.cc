@@ -87,6 +87,20 @@ std::string ByteArray::BitsStream() {
   return ss.str();
 }
 
+std::unique_ptr<iovec, std::function<void(iovec *)>> ByteArray::GetAllBits() {
+  std::string bits = BitsStream();
+  std::unique_ptr<iovec, std::function<void(iovec *)>> iov(
+      new iovec, [&](iovec *iov) {
+        if (iov) {
+          free(iov->iov_base);
+        }
+      });
+  iov->iov_base = malloc(sizeof(uint8_t) * bits.length());
+  memcpy(iov->iov_base, bits.c_str(), bits.length());
+  iov->iov_len = bits.length();
+  return iov;
+}
+
 void ByteArray::Write(const void *buf, size_t size) {
   if (!write_ptr_ || size == 0) {
     return;
