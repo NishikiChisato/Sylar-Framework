@@ -8,7 +8,7 @@ namespace Sylar {
 class Stream {
 public:
   typedef std::shared_ptr<Stream> ptr;
-  ~Stream() {}
+  virtual ~Stream() {}
 
   virtual size_t Read(void *buffer, size_t length) = 0;
 
