@@ -34,8 +34,6 @@ public:
 
   size_t GetCapacity() { return capacity_; }
 
-  size_t GetPosition() { return position_; }
-
   /**
    * @brief write to link list, this method will change the position of
    * position_
@@ -61,6 +59,23 @@ public:
   std::string BitsStream();
 
   std::unique_ptr<iovec, std::function<void(iovec *)>> GetAllBits();
+
+  /**
+   * @brief set the all bits to byte array. this function will empty the
+   * previous content
+   */
+  void SetAllBits(iovec *iov);
+
+  /**
+   * @brief get underlying buffer of byte array, caller can read from and write
+   * into this buffer
+   *
+   * @param length the length of buffer. if the size of byte array is less than
+   * length, byte array will automatically expend
+   */
+  void GetBuffer(std::vector<iovec> &ivec, size_t length);
+
+  void Clear();
 
   template <typename T> void WriteAny(const T &val, bool isFixed = false) {
     if (std::is_same<T, uint8_t>::value) {
@@ -316,9 +331,8 @@ private:
    */
   void ExtendCapacity(size_t delta);
 
-  const size_t NODE_SIZE = 8;
-  size_t position_; // the current position to be write(this position don't have
-  // data)
+  const size_t NODE_SIZE = 128;
+  size_t base_size_;
   size_t read_pos_;
   size_t capacity_;                 // the capacity of byte array
   std::shared_ptr<Node> root_ptr_;  // the header linker of link list

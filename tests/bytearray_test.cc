@@ -4,7 +4,7 @@
 #include <vector>
 
 TEST(ByteArray, BasicReadWrite1) {
-  Sylar::ByteArray arr(8);
+  Sylar::ByteArray arr(32);
   const size_t sz = 64;
   char buf[sz];
   memset(buf, 0xff, sizeof(buf));
@@ -21,7 +21,7 @@ TEST(ByteArray, BasicReadWrite1) {
 }
 
 TEST(ByteArray, BasicReadWrite2) {
-  Sylar::ByteArray arr(8);
+  Sylar::ByteArray arr(32);
   uint8_t a1 = 1;
   uint16_t b1 = 2;
   uint32_t c1 = 3;
@@ -72,7 +72,7 @@ TEST(ByteArray, BasicReadWrite2) {
 }
 
 TEST(ByteArray, IntReadWriteFixed) {
-  Sylar::ByteArray::ptr ba(new Sylar::ByteArray(8));
+  Sylar::ByteArray::ptr ba(new Sylar::ByteArray(32));
 
   ba->WriteFuint8(1);
   ba->WriteFint8(2);
@@ -145,7 +145,7 @@ TEST(ByteArray, IntReadWriteFixed) {
 }
 
 TEST(ByteArray, IntReadWriteVarint) {
-  Sylar::ByteArray::ptr ba(new Sylar::ByteArray(8));
+  Sylar::ByteArray::ptr ba(new Sylar::ByteArray(32));
 
   ba->WriteVuint8(1);
   ba->WriteVint8(2);
@@ -215,4 +215,45 @@ TEST(ByteArray, IntReadWriteVarint) {
   EXPECT_EQ(v9, std::string("hello world"));
   EXPECT_EQ(v10, 9.0);
   EXPECT_EQ(v11, 10.0);
+}
+
+void CheckMemory(std::vector<iovec> &ivec) {
+  for (auto &iov : ivec) {
+    for (size_t i = 0; i < iov.iov_len; i++) {
+      EXPECT_EQ(*(reinterpret_cast<uint8_t *>(iov.iov_base) + i), 0xff);
+    }
+  }
+}
+
+TEST(ByteArray, BufferBasic) {
+  Sylar::ByteArray::ptr ba(new Sylar::ByteArray(16));
+  std::vector<iovec> ivec;
+  ba->GetBuffer(ivec, 64);
+  for (auto &iov : ivec) {
+    memset(iov.iov_base, 0xff, iov.iov_len);
+  }
+
+  std::vector<iovec> aivec;
+  ba->GetBuffer(aivec, 32);
+  CheckMemory(aivec);
+
+  aivec.clear();
+  ba->GetBuffer(aivec, 64);
+  CheckMemory(aivec);
+
+  ba->Clear();
+  ivec.clear();
+  aivec.clear();
+
+  ba->GetBuffer(ivec, 64);
+  for (auto &iov : ivec) {
+    memset(iov.iov_base, 0xff, iov.iov_len);
+  }
+
+  ba->GetBuffer(aivec, 32);
+  CheckMemory(aivec);
+
+  aivec.clear();
+  ba->GetBuffer(aivec, 64);
+  CheckMemory(aivec);
 }

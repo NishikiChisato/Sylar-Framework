@@ -44,8 +44,8 @@ ByteArray::ByteArray(size_t baseSize) {
   if (baseSize < NODE_SIZE) {
     baseSize = NODE_SIZE;
   }
+  base_size_ = baseSize;
   capacity_ = baseSize;
-  position_ = 0;
   read_pos_ = 0;
   root_ptr_ = std::make_shared<Node>(baseSize);
   write_ptr_ = root_ptr_;
@@ -55,13 +55,13 @@ ByteArray::ByteArray(size_t baseSize) {
 ByteArray::~ByteArray() {}
 
 void ByteArray::ExtendCapacity(size_t delta) {
-  size_t node_cnt = RoundUp(delta, NODE_SIZE);
+  size_t node_cnt = RoundUp(delta, base_size_);
   std::shared_ptr<Node> tmp = write_ptr_;
   for (size_t i = 0; i < node_cnt; i++) {
-    std::shared_ptr<Node> n_node(new Node(NODE_SIZE));
+    std::shared_ptr<Node> n_node(new Node(base_size_));
     tmp->next_ = n_node;
     tmp = tmp->next_;
-    capacity_ += NODE_SIZE;
+    capacity_ += base_size_;
   }
 }
 
@@ -73,13 +73,13 @@ std::string ByteArray::BitsStream() {
   size_t pos = 0;
   while (tmp) {
     if (tmp->next_) {
-      memcpy(buf.get() + pos, tmp->base_ptr_.get(), NODE_SIZE);
-      pos += NODE_SIZE;
+      memcpy(buf.get() + pos, tmp->base_ptr_.get(), base_size_);
+      pos += base_size_;
       tmp = tmp->next_;
     } else {
       memcpy(buf.get() + pos, tmp->base_ptr_.get(),
-             NODE_SIZE - tmp->rest_size_);
-      pos += NODE_SIZE - tmp->rest_size_;
+             base_size_ - tmp->rest_size_);
+      pos += base_size_ - tmp->rest_size_;
       tmp = tmp->next_;
     }
   }
@@ -101,6 +101,40 @@ std::unique_ptr<iovec, std::function<void(iovec *)>> ByteArray::GetAllBits() {
   return iov;
 }
 
+void ByteArray::SetAllBits(iovec *iov) {
+  root_ptr_.reset(new Node(base_size_));
+  read_ptr_ = root_ptr_;
+  write_ptr_ = root_ptr_;
+  read_pos_ = 0;
+  Write(iov->iov_base, iov->iov_len);
+}
+
+void ByteArray::GetBuffer(std::vector<iovec> &ivec, size_t length) {
+  if (capacity_ < length) {
+    ExtendCapacity(length);
+  }
+  std::shared_ptr<Node> tmp = root_ptr_;
+  iovec iov;
+  while (tmp) {
+    if (tmp->rest_size_ == 0) {
+      iov.iov_base = tmp->base_ptr_.get();
+      iov.iov_len = base_size_;
+    } else {
+      iov.iov_base = tmp->base_ptr_.get();
+      iov.iov_len = base_size_ - tmp->rest_size_;
+    }
+    ivec.push_back(iov);
+    tmp = tmp->next_;
+  }
+}
+
+void ByteArray::Clear() {
+  root_ptr_.reset(new Node(base_size_));
+  read_ptr_ = root_ptr_;
+  write_ptr_ = root_ptr_;
+  read_pos_ = 0;
+}
+
 void ByteArray::Write(const void *buf, size_t size) {
   if (!write_ptr_ || size == 0) {
     return;
@@ -112,20 +146,18 @@ void ByteArray::Write(const void *buf, size_t size) {
   size_t buf_pos = 0;
   while (size > 0) {
     if (write_ptr_ && write_ptr_->rest_size_ >= size) {
-      size_t start = NODE_SIZE - write_ptr_->rest_size_;
+      size_t start = base_size_ - write_ptr_->rest_size_;
       memcpy(write_ptr_->base_ptr_.get() + start, (const char *)buf + buf_pos,
              size);
 
-      position_ += size;
       buf_pos += size;
       write_ptr_->rest_size_ -= size;
       size = 0;
     } else if (write_ptr_) {
-      size_t start = NODE_SIZE - write_ptr_->rest_size_;
+      size_t start = base_size_ - write_ptr_->rest_size_;
       memcpy(write_ptr_->base_ptr_.get() + start, (const char *)buf + buf_pos,
              write_ptr_->rest_size_);
 
-      position_ += write_ptr_->rest_size_;
       buf_pos += write_ptr_->rest_size_;
       size -= write_ptr_->rest_size_;
 
@@ -141,10 +173,10 @@ void ByteArray::Read(void *buf, size_t size) {
   }
   size_t bpos = 0;
   while (size > 0) {
-    size_t start = read_pos_ % NODE_SIZE;
-    size_t read_sz = std::min(NODE_SIZE - start, size);
+    size_t start = read_pos_ % base_size_;
+    size_t read_sz = std::min(base_size_ - start, size);
     memcpy((char *)buf + bpos, read_ptr_->base_ptr_.get() + start, read_sz);
-    if (start + read_sz == NODE_SIZE) {
+    if (start + read_sz == base_size_) {
       read_ptr_ = read_ptr_->next_;
     }
     read_pos_ += read_sz;
@@ -156,7 +188,7 @@ void ByteArray::Read(void *buf, size_t size) {
 void ByteArray::Dump() {
   std::shared_ptr<Node> tmp = root_ptr_;
   while (tmp) {
-    PrintMemory(tmp->base_ptr_.get(), NODE_SIZE);
+    PrintMemory(tmp->base_ptr_.get(), base_size_);
     tmp = tmp->next_;
   }
   return;
