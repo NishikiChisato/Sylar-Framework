@@ -29,6 +29,9 @@ Socket::Socket(int family, int type, int protocol)
   }
 
   socket_ = socket(family_, type_, protocol_);
+
+  FDManager::Instance().GetFD(socket_, true);
+
   if (socket_ == -1) {
     SYLAR_ERROR_LOG(SYLAR_LOG_ROOT)
         << "Socket::Socket socket create failed: " << strerror(errno);
@@ -184,6 +187,44 @@ Address::ptr Socket::GetLocalAddress() {
   }
   local_address_ = ret;
   return ret;
+}
+
+uint64_t Socket::GetSendTimeout() {
+  auto fd = FDManager::Instance().GetFD(socket_);
+  if (fd) {
+    return fd->GetTimeout(SO_SNDTIMEO);
+  }
+  return 0;
+}
+
+uint64_t Socket::GetRecvTimeout() {
+  auto fd = FDManager::Instance().GetFD(socket_);
+  if (fd) {
+    return fd->GetTimeout(SO_RCVTIMEO);
+  }
+  return 0;
+}
+
+void Socket::SetRecvTimeout(uint64_t v) {
+  struct timeval tv {
+    int64_t(v) / 1000, int64_t(v) / 1000000
+  };
+  SetSockOpt(SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+  auto fd = FDManager::Instance().GetFD(socket_);
+  if (fd) {
+    fd->SetTimeout(SO_RCVTIMEO, v);
+  }
+}
+
+void Socket::SetSendTimeout(uint64_t v) {
+  struct timeval tv {
+    int64_t(v) / 1000, int64_t(v) / 1000000
+  };
+  SetSockOpt(SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+  auto fd = FDManager::Instance().GetFD(socket_);
+  if (fd) {
+    fd->SetTimeout(SO_SNDTIMEO, v);
+  }
 }
 
 ssize_t Socket::Send(const void *buf, size_t len, int flags) {

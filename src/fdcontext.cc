@@ -4,7 +4,8 @@ namespace Sylar {
 
 FDContext::FDContext(int fd)
     : fd_(fd), is_init_(false), is_socket_(false), is_fifo_(false),
-      is_close_(false), is_nonblock_(false) {
+      is_close_(false), is_nonblock_(false), recv_timeout_(-1),
+      send_timeout_(-1) {
   Init();
 }
 
@@ -38,6 +39,23 @@ void FDContext::Init() {
   if (flag & O_NONBLOCK) {
     is_nonblock_ = true;
   }
+}
+
+void FDContext::SetTimeout(int type, uint64_t v) {
+  if (type == SO_RCVTIMEO) {
+    recv_timeout_ = v;
+  } else if (type == SO_SNDTIMEO) {
+    send_timeout_ = v;
+  }
+}
+
+uint64_t FDContext::GetTimeout(int type) {
+  if (type == SO_RCVTIMEO) {
+    return recv_timeout_;
+  } else if (type == SO_SNDTIMEO) {
+    return send_timeout_;
+  }
+  return 0;
 }
 
 FDManager::FDManager() { fds_.resize(64); }

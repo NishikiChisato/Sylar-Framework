@@ -33,6 +33,13 @@ public:
 
   void SetNonBlock(bool v);
 
+  /**
+   * @param type SO_RCVTIMEO(recv timeout), SO_SNDTIME)(send timeout)
+   */
+  void SetTimeout(int type, uint64_t val);
+
+  uint64_t GetTimeout(int type);
+
 private:
   void Init();
 
@@ -43,6 +50,9 @@ private:
   bool is_close_;  // close or not
   bool is_fifo_;
   bool is_nonblock_; // non-block or not
+
+  uint64_t recv_timeout_;
+  uint64_t send_timeout_;
 };
 
 class FDManager {

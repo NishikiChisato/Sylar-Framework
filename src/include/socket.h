@@ -60,6 +60,14 @@ public:
    */
   bool SetSockOpt(int level, int option, void *result, socklen_t len);
 
+  uint64_t GetSendTimeout();
+
+  void SetSendTimeout(uint64_t v);
+
+  uint64_t GetRecvTimeout();
+
+  void SetRecvTimeout(uint64_t v);
+
   /**
    * @brief accept connection
    *
