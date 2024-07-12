@@ -136,10 +136,6 @@ public:
 
   virtual ssize_t RecvMsg(msghdr *msg, int flags);
 
-  Address::ptr GetRemoteAddress();
-
-  Address::ptr GetLocalAddress();
-
   int GetSocket() const { return socket_; }
 
   int GetFamily() const { return family_; }
@@ -193,8 +189,6 @@ protected:
   int protocol_;      // the protocol arguement of socket()
   bool is_connected_; // connected or not(UDP is connectless, so this field is
                       // always true)
-  Address::ptr remote_address_; // the remote end of socket
-  Address::ptr local_address_;  // the local end of socket
 };
 
 } // namespace Sylar

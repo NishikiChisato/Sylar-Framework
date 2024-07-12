@@ -54,12 +54,4 @@ bool SocketStream::IsConnected() {
   return socket_ ? socket_->IsConnected() : false;
 }
 
-Address::ptr SocketStream::GetRemoteAddress() {
-  return socket_ ? socket_->GetRemoteAddress() : nullptr;
-}
-
-Address::ptr SocketStream::GetLocalAddress() {
-  return socket_ ? socket_->GetLocalAddress() : nullptr;
-}
-
 } // namespace Sylar

@@ -12,7 +12,7 @@ public:
 
   SocketStream(Socket::ptr ptr) : socket_(ptr) {}
 
-  ~SocketStream();
+  virtual ~SocketStream();
 
   /**
    * @attention this two read function cannot guarantee read length bits data
@@ -31,10 +31,6 @@ public:
   virtual void Close() override;
 
   bool IsConnected();
-
-  Address::ptr GetRemoteAddress();
-
-  Address::ptr GetLocalAddress();
 
 private:
   Socket::ptr socket_;

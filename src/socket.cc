@@ -60,14 +60,9 @@ bool Socket::SetSockOpt(int level, int option, void *result, socklen_t len) {
 }
 
 void Socket::Init(int socket) {
-  FDContext::ptr ctx = FDManager::Instance().GetFD(socket, true);
-  if (ctx && ctx->IsSocket() && !ctx->IsClose()) {
-    socket_ = socket;
-    is_connected_ = true;
-    InitSocket();
-    GetRemoteAddress();
-    GetLocalAddress();
-  }
+  socket_ = socket;
+  is_connected_ = true;
+  InitSocket();
 }
 
 void Socket::InitSocket() {
@@ -80,6 +75,7 @@ void Socket::InitSocket() {
 
 bool Socket::Bind(const Address::ptr addr) {
   if (addr->GetFamily() != family_) {
+    SYLAR_ERROR_LOG(SYLAR_LOG_ROOT) << "Socket::Bind error: family inconsist";
     return false;
   }
   if (::bind(socket_, addr->GetSockaddr(), addr->GetSocklen()) != 0) {
@@ -87,7 +83,6 @@ bool Socket::Bind(const Address::ptr addr) {
         << "Socket::Bind error: " << strerror(errno);
     return false;
   }
-  GetLocalAddress();
   return true;
 }
 
@@ -119,8 +114,6 @@ bool Socket::Connect(const Address::ptr addr) {
     return false;
   }
   is_connected_ = true;
-  GetLocalAddress();
-  GetRemoteAddress();
   return true;
 }
 
@@ -131,62 +124,6 @@ bool Socket::Close() {
     socket_ = -1;
   }
   return true;
-}
-
-Address::ptr Socket::GetRemoteAddress() {
-  if (remote_address_) {
-    return remote_address_;
-  }
-  Address::ptr ret;
-  switch (family_) {
-  case AF_INET:
-    ret = std::make_shared<IPv4Address>();
-    break;
-  case AF_INET6:
-    ret = std::make_shared<IPv6Address>();
-    break;
-  default:
-    break;
-  }
-  if (!ret) {
-    return nullptr;
-  }
-  socklen_t len;
-  if (::getpeername(socket_, ret->GetSockaddr(), &len) != 0) {
-    SYLAR_ERROR_LOG(SYLAR_LOG_ROOT)
-        << "Socket::GetRemoteAddress error: " << strerror(errno);
-    return nullptr;
-  }
-  remote_address_ = ret;
-  return ret;
-}
-
-Address::ptr Socket::GetLocalAddress() {
-  if (local_address_) {
-    return local_address_;
-  }
-  Address::ptr ret;
-  switch (family_) {
-  case AF_INET:
-    ret = std::make_shared<IPv4Address>();
-    break;
-  case AF_INET6:
-    ret = std::make_shared<IPv6Address>();
-    break;
-  default:
-    break;
-  }
-  if (!ret) {
-    return nullptr;
-  }
-  socklen_t len;
-  if (::getpeername(socket_, ret->GetSockaddr(), &len) != 0) {
-    SYLAR_ERROR_LOG(SYLAR_LOG_ROOT)
-        << "Socket::GetLocalAddress error: " << strerror(errno);
-    return nullptr;
-  }
-  local_address_ = ret;
-  return ret;
 }
 
 uint64_t Socket::GetSendTimeout() {
@@ -310,9 +247,7 @@ std::string Socket::ToString() {
   std::stringstream ss;
   ss << "[socket = " << socket_ << ", connect = " << is_connected_
      << ", family = " << family_ << ", type = " << type_
-     << ", protocol = " << protocol_
-     << ", local address = " << local_address_->ToString()
-     << ", remote address = " << remote_address_->ToString() << std::endl;
+     << ", protocol = " << protocol_ << "]" << std::endl;
   return ss.str();
 }
 } // namespace Sylar
