@@ -102,15 +102,29 @@ public:
 
   virtual ssize_t Send(const void *buf, size_t len, int flags = 0);
 
-  virtual ssize_t SendTo(const void *buf, size_t len, int flags,
-                         sockaddr *dest_addr, socklen_t addrlen);
+  /**
+   * @brief if socket is unconnected(don't call connect method), we should
+   * specify the destination address. the unconnected socket usually use in
+   * connectionless protocol like UDP and connected socket usually use in
+   * connection protocl like TCP
+   *
+   * @param [in] to only use in connectionless protocol
+   */
+  virtual ssize_t SendTo(const void *buf, size_t len, Address::ptr to,
+                         int flags);
+
+  virtual ssize_t SendTo(const iovec *iov, size_t length, Address::ptr to,
+                         int flags = 0);
 
   virtual ssize_t SendMsg(const msghdr *msg, int flags);
 
   virtual ssize_t Recv(void *buf, size_t len, int flags = 0);
 
-  virtual ssize_t RecvFrom(void *buf, size_t len, int flags, sockaddr *src_addr,
-                           socklen_t *addrlen);
+  virtual ssize_t RecvFrom(void *buf, size_t len, Address::ptr from,
+                           int flags = 0);
+
+  virtual ssize_t RecvFrom(iovec *iov, size_t length, Address::ptr from,
+                           int flags = 0);
 
   virtual ssize_t RecvMsg(msghdr *msg, int flags);
 

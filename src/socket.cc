@@ -195,14 +195,26 @@ ssize_t Socket::Send(const void *buf, size_t len, int flags) {
   return ret;
 }
 
-ssize_t Socket::SendTo(const void *buf, size_t len, int flags,
-                       sockaddr *dest_addr, socklen_t addrlen) {
-  int ret = ::sendto(socket_, buf, len, flags, dest_addr, addrlen);
+ssize_t Socket::SendTo(const void *buf, size_t len, Address::ptr to,
+                       int flags) {
+  int ret =
+      ::sendto(socket_, buf, len, flags, to->GetSockaddr(), to->GetSocklen());
   if (ret == -1) {
     SYLAR_ERROR_LOG(SYLAR_LOG_ROOT)
         << "Socket::SendTo error: " << strerror(errno);
   }
   return ret;
+}
+
+ssize_t Socket::SendTo(const iovec *iov, size_t length, Address::ptr to,
+                       int flags) {
+  msghdr msg;
+  memset(&msg, 0, sizeof(msg));
+  msg.msg_iov = (iovec *)iov;
+  msg.msg_iovlen = length;
+  msg.msg_name = to->GetSockaddr();
+  msg.msg_namelen = to->GetSocklen();
+  return ::sendmsg(socket_, &msg, flags);
 }
 
 ssize_t Socket::SendMsg(const msghdr *msg, int flags) {
@@ -223,9 +235,9 @@ ssize_t Socket::Recv(void *buf, size_t len, int flags) {
   return ret;
 }
 
-ssize_t Socket::RecvFrom(void *buf, size_t len, int flags, sockaddr *src_addr,
-                         socklen_t *addrlen) {
-  int ret = ::recvfrom(socket_, buf, len, flags, src_addr, addrlen);
+ssize_t Socket::RecvFrom(void *buf, size_t len, Address::ptr from, int flags) {
+  socklen_t slen = from->GetSocklen();
+  int ret = ::recvfrom(socket_, buf, len, flags, from->GetSockaddr(), &slen);
   if (ret == -1) {
     SYLAR_ERROR_LOG(SYLAR_LOG_ROOT)
         << "Socket::RecvFrom error: " << strerror(errno);
@@ -240,6 +252,17 @@ ssize_t Socket::RecvMsg(msghdr *msg, int flags) {
         << "Socket::RecvMsg error: " << strerror(errno);
   }
   return ret;
+}
+
+ssize_t Socket::RecvFrom(iovec *iov, size_t length, Address::ptr from,
+                         int flags) {
+  msghdr msg;
+  memset(&msg, 0, sizeof(msg));
+  msg.msg_iov = iov;
+  msg.msg_iovlen = length;
+  msg.msg_name = from->GetSockaddr();
+  msg.msg_namelen = from->GetSocklen();
+  return ::recvmsg(socket_, &msg, flags);
 }
 
 std::string Socket::ToString() {
