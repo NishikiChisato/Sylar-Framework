@@ -4,7 +4,9 @@
 #include <gtest/gtest.h>
 #include <iostream>
 #include <memory>
+#include <sys/resource.h>
 #include <sys/sysinfo.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <thread>
 
@@ -192,4 +194,34 @@ TEST(Coroutine, SharedMemoryResume) {
     EXPECT_EQ(co1->GetCoState(), Sylar::Coroutine::CO_TERMINAL);
     EXPECT_EQ(co2->GetCoState(), Sylar::Coroutine::CO_TERMINAL);
   }
+}
+
+uint64_t GetMemoryUsage() {
+  rusage re;
+  getrusage(RUSAGE_SELF, &re);
+  return re.ru_maxrss;
+}
+
+TEST(Coroutine, MemoryMeasure) {
+  const int cnt = 5e6;
+  const int cycle = 10;
+  auto attr = std::make_shared<Sylar::CoroutineAttr>();
+  attr->shared_mem_ = Sylar::SharedMem::AllocSharedMem(64, 64 * 1024);
+  std::vector<std::shared_ptr<Sylar::Coroutine>> cvec;
+
+  uint64_t mem_st = GetMemoryUsage();
+
+  for (int i = 0; i < cnt; i++) {
+    cvec.push_back(Sylar::Coroutine::CreateCoroutine(
+        Sylar::Schedule::GetThreadSchedule(), attr, std::bind(&swap)));
+  }
+  for (int i = 0; i < cnt; i++) {
+    cvec[i]->Resume();
+  }
+
+  uint64_t mem_ed = GetMemoryUsage();
+
+  std::cout << "Memory Usage(Resident Set Size): " << mem_ed - mem_st << " KB"
+            << "(" << ((double)mem_ed - (double)mem_st) / 1024.0 / 1024.0
+            << " GB)" << std::endl;
 }
