@@ -4,7 +4,7 @@
 void Simple(int x) { std::cout << "function: " << x << std::endl; }
 
 TEST(Timewheel, Basic) {
-  auto tw = std::make_shared<Sylar::TimeWheel>(10, 2);
+  auto tw = std::make_shared<Sylar::TimeWheel>(10, 1);
 
   tw->AddTimer(0, std::bind(&Simple, 0), nullptr, -1);
   for (int i = 1; i <= 20; i++) {

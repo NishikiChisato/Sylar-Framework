@@ -1,24 +1,12 @@
 #include "include/coroutine.hh"
+#include "include/epoll.hh"
+#include "include/timewheel.hh"
 
 namespace Sylar {
 
 thread_local std::shared_ptr<Schedule> Schedule::t_schedule_ = nullptr;
 
-void PrintCoInvokeStack(Schedule *ptr) {
-  for (auto &it : ptr->co_stack_) {
-    switch (it->GetCoState()) {
-    case Coroutine::CO_READY:
-      std::cout << "CO_READY" << std::endl;
-      break;
-    case Coroutine::CO_RUNNING:
-      std::cout << "CO_RUNNING" << std::endl;
-      break;
-    case Coroutine::CO_TERMINAL:
-      std::cout << "CO_TERMINAL" << std::endl;
-      break;
-    }
-  }
-}
+thread_local std::shared_ptr<Epoll> Schedule::t_epoll_ = nullptr;
 
 void Schedule::InitThreadSchedule() {
   t_schedule_ = Schedule::Instance();
@@ -29,6 +17,15 @@ void Schedule::InitThreadSchedule() {
   t_schedule_->co_stack_.push_back(main_co);
   t_schedule_->stack_top_ = 1;
   t_schedule_->running_co_ = main_co;
+}
+
+std::shared_ptr<Coroutine> Schedule::GetCurrentCo() {
+  if (!GetThreadSchedule()) {
+    InitThreadSchedule();
+  }
+  auto schedule = Schedule::GetThreadSchedule();
+  auto top = schedule->co_stack_.back();
+  return top;
 }
 
 void Schedule::Yield() {
@@ -75,6 +72,33 @@ void Schedule::SwapContext(std::shared_ptr<Coroutine> prev,
   swapcontext(&prev->coctx_, &next->coctx_);
 }
 
+void Schedule::InitThreadEpoll() {
+  t_epoll_ = Epoll::Instance();
+  Epoll::InitEpoll(t_epoll_);
+}
+
+void Schedule::Eventloop(std::shared_ptr<Epoll> epoll) {
+  const uint64_t MAX_TIMEOUT = 1000;
+  const int MAX_EVENT = 256;
+  epoll_event *evs = (epoll_event *)calloc(MAX_EVENT, sizeof(epoll_event));
+  std::shared_ptr<epoll_event> deleter(evs, free);
+  while (!epoll->Stoped()) {
+    // we can set granularity in epoll
+    uint64_t now = GetElapseFromRebootMS();
+    uint64_t interval = epoll->GetNextTimeout(now);
+    uint64_t timeout =
+        (interval == 0 ? MAX_TIMEOUT : std::min(interval + 1, MAX_TIMEOUT));
+    int cnt = epoll_wait(epoll->epfd_, evs, MAX_EVENT, timeout);
+    for (int i = 0; i < cnt; i++) {
+      auto &ev = evs[i];
+      Epoll::EventCtx *ptr = (Epoll::EventCtx *)ev.data.ptr;
+      ptr->callback_();
+    }
+    now = GetElapseFromRebootMS();
+    epoll->ExecuteTimeout(now);
+  }
+}
+
 void Coroutine::SaveStack() {
 
   // clang-format off
@@ -101,7 +125,7 @@ void Coroutine::SaveStack() {
   // |                  | 
   // |                  | 
   // |                  | 
-  // |                 | 
+  // |                  | 
   // |                  | 
   // |------------------|  (low address)
   // clang-format on
@@ -135,10 +159,10 @@ Coroutine::CreateCoroutine(std::shared_ptr<Schedule> sc,
     }
     if (attr->shared_mem_) {
       co->use_shared_stk_ = true;
-      co->stack_mem_ = SharedMem_t::GetStackMem(attr->shared_mem_);
+      co->stack_mem_ = SharedMem::GetStackMem(attr->shared_mem_);
     } else {
       co->use_shared_stk_ = false;
-      co->stack_mem_ = StackMem_t::AllocStack(attr->stack_size_);
+      co->stack_mem_ = StackMem::AllocStack(attr->stack_size_);
     }
   }
 
@@ -147,10 +171,10 @@ Coroutine::CreateCoroutine(std::shared_ptr<Schedule> sc,
   co->co_state_ = CoState::CO_READY;
   co->saved_stack_ = nullptr;
   co->saved_size_ = 0;
+  getcontext(&co->coctx_);
 
   if (attr) {
     co->func_.swap(func);
-    getcontext(&co->coctx_);
     co->coctx_.uc_stack.ss_sp = co->stack_mem_->stack_buffer_.get();
     co->coctx_.uc_stack.ss_size = co->stack_mem_->size_;
     co->coctx_.uc_link = nullptr;
@@ -163,6 +187,9 @@ Coroutine::CreateCoroutine(std::shared_ptr<Schedule> sc,
 
 void Coroutine::Resume() {
   auto t_schedule = schedule_->GetThreadSchedule();
+  if (co_state_ == CO_TERMINAL) {
+    return;
+  }
   assert(co_state_ == CO_READY);
   assert(t_schedule->running_co_->co_state_ == CO_RUNNING);
 

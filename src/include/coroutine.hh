@@ -1,6 +1,7 @@
-#ifndef __SYLAR_COROUTINE_H__
-#define __SYLAR_COROUTINE_H__
+#ifndef __SYLAR_COROUTINE_HH__
+#define __SYLAR_COROUTINE_HH__
 
+#include "epoll.hh"
 #include "util.hh"
 #include <atomic>
 #include <cstring>
@@ -10,6 +11,9 @@
 #include <vector>
 
 namespace Sylar {
+
+class Coroutine;
+class Epoll;
 
 class MemoryAlloc {
 public:
@@ -30,9 +34,7 @@ public:
   }
 };
 
-class Coroutine;
-
-struct StackMem_t {
+struct StackMem {
   // this stack memory is occupied by which coroutine, this field only used in
   // shared memory. in this scenario, this stack memory may be shared by
   // multiply coroutine, we should save this stack memory to previous
@@ -45,8 +47,8 @@ struct StackMem_t {
   // stack_buffer_ + size_
   std::shared_ptr<void> stack_buffer_;
 
-  static std::shared_ptr<StackMem_t> AllocStack(size_t size) {
-    std::shared_ptr<StackMem_t> ptr(new StackMem_t());
+  static std::shared_ptr<StackMem> AllocStack(size_t size) {
+    std::shared_ptr<StackMem> ptr(new StackMem());
     ptr->size_ = size;
     ptr->occupy_co_ = nullptr;
     ptr->stack_buffer_ = MemoryAlloc::AllocUniqueMemory(size);
@@ -54,14 +56,14 @@ struct StackMem_t {
   }
 };
 
-struct SharedMem_t {
+struct SharedMem {
   // the number of coroutine shares this shared stack memory
   size_t count_;
   // the size of each stack memory
   size_t size_;
   // shared memory consist of an array of stack memory, each stack memory can be
   // used by one coroutine
-  std::vector<std::shared_ptr<StackMem_t>> stack_array_;
+  std::vector<std::shared_ptr<StackMem>> stack_array_;
   // used to find empty stack memory in stack_array_
   size_t idx_;
 
@@ -69,21 +71,19 @@ struct SharedMem_t {
    * @param count the number of coroutine will share this shared memory
    * @param size the size of each stack memory in shared memory
    */
-  static std::shared_ptr<SharedMem_t> AllocSharedMem(size_t count,
-                                                     size_t size) {
-    auto ptr = std::make_shared<SharedMem_t>();
+  static std::shared_ptr<SharedMem> AllocSharedMem(size_t count, size_t size) {
+    auto ptr = std::make_shared<SharedMem>();
     ptr->count_ = count;
     ptr->size_ = size;
     ptr->idx_ = 0;
     ptr->stack_array_.resize(count);
     for (size_t i = 0; i < count; i++) {
-      ptr->stack_array_[i] = StackMem_t::AllocStack(size);
+      ptr->stack_array_[i] = StackMem::AllocStack(size);
     }
     return ptr;
   }
 
-  static std::shared_ptr<StackMem_t>
-  GetStackMem(std::shared_ptr<SharedMem_t> ptr) {
+  static std::shared_ptr<StackMem> GetStackMem(std::shared_ptr<SharedMem> ptr) {
     if (!ptr) {
       return nullptr;
     }
@@ -95,7 +95,7 @@ struct SharedMem_t {
 
 struct CoroutineAttr {
   size_t stack_size_;
-  std::shared_ptr<SharedMem_t> shared_mem_;
+  std::shared_ptr<SharedMem> shared_mem_;
 
   CoroutineAttr() {
     stack_size_ = 64 * 1024;
@@ -106,6 +106,7 @@ struct CoroutineAttr {
 class Schedule {
 public:
   friend Coroutine;
+  friend Epoll;
 
   /**
    * when shared_ptr try to delete a object, it will invoke destructor.
@@ -120,13 +121,33 @@ public:
     return instance;
   }
 
-  static std::shared_ptr<Schedule> GetThreadSchedule() { return t_schedule_; }
+  static std::shared_ptr<Schedule> GetThreadSchedule() {
+    if (!t_schedule_) {
+      InitThreadSchedule();
+    }
+    return t_schedule_;
+  }
 
   static void InitThreadSchedule();
 
+  static std::shared_ptr<Epoll> GetThreadEpoll() {
+    if (!t_epoll_) {
+      InitThreadEpoll();
+    }
+    return t_epoll_;
+  }
+
+  static void InitThreadEpoll();
+
+  static void Eventloop(std::shared_ptr<Epoll> epoll);
+
+  static std::shared_ptr<Coroutine> GetCurrentCo();
+
+  void StopEventLoop(bool val) { t_epoll_->StopEventLoop(val); }
+
   static void Yield();
 
-  // private:
+private:
   static void SwapContext(std::shared_ptr<Coroutine> prev,
                           std::shared_ptr<Coroutine> next);
 
@@ -140,6 +161,8 @@ public:
   std::shared_ptr<Coroutine> running_co_;
 
   static thread_local std::shared_ptr<Schedule> t_schedule_;
+
+  static thread_local std::shared_ptr<Epoll> t_epoll_;
 };
 
 class Coroutine : public std::enable_shared_from_this<Coroutine> {
@@ -153,11 +176,7 @@ public:
   };
 
   struct Deletor {
-    void operator()(Coroutine *ptr) {
-      assert(ptr->co_state_ == CO_TERMINAL);
-      std::cout << "Deletro execute" << std::endl;
-      free(ptr);
-    }
+    void operator()(Coroutine *ptr) { free(ptr); }
   };
 
   static std::shared_ptr<Coroutine>
@@ -185,7 +204,7 @@ private:
   bool is_main_co_;                    // whether main coroutine or not
   bool use_shared_stk_;                // whether use shared stack or not
 
-  std::shared_ptr<StackMem_t>
+  std::shared_ptr<StackMem>
       stack_mem_; // the execute memory of current coroutine
 
   std::shared_ptr<void> saved_stack_; // used to save execute stack space
