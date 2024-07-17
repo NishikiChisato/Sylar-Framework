@@ -1,4 +1,4 @@
-#include "../src/include/util.h"
+#include "../src/include/util.hh"
 #include <gtest/gtest.h>
 
 TEST(Util, Backtrace) {
