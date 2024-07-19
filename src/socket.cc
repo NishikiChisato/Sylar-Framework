@@ -1,4 +1,6 @@
-#include "include/socket.h"
+#include "include/socket.hh"
+#include "include/address.hh"
+#include "include/fdcontext.hh"
 
 namespace Sylar {
 
@@ -30,6 +32,12 @@ Socket::Socket(int family, int type, int protocol)
 
   socket_ = socket(family_, type_, protocol_);
 
+  int val = 1;
+  SetSockOpt(SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
+  if (type_ == TCP) {
+    SetSockOpt(IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val));
+  }
+
   FDManager::Instance().GetFD(socket_, true);
 
   if (socket_ == -1) {
@@ -39,7 +47,13 @@ Socket::Socket(int family, int type, int protocol)
   }
 }
 
-Socket::~Socket() { Close(); }
+Socket::~Socket() {
+  is_connected_ = false;
+  if (socket_ != -1) {
+    close(socket_);
+    socket_ = -1;
+  }
+}
 
 bool Socket::GetSockOpt(int level, int option, void *result, socklen_t *len) {
   if (int ret = getsockopt(socket_, level, option, result, len); ret == -1) {
@@ -59,35 +73,22 @@ bool Socket::SetSockOpt(int level, int option, void *result, socklen_t len) {
   return true;
 }
 
-void Socket::Init(int socket) {
-  socket_ = socket;
-  is_connected_ = true;
-  InitSocket();
-}
-
-void Socket::InitSocket() {
-  int val = 1;
-  SetSockOpt(SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
-  if (type_ == TCP) {
-    SetSockOpt(IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val));
-  }
-}
-
 bool Socket::Bind(const Address::ptr addr) {
   if (addr->GetFamily() != family_) {
     SYLAR_ERROR_LOG(SYLAR_LOG_ROOT) << "Socket::Bind error: family inconsist";
     return false;
   }
-  if (::bind(socket_, addr->GetSockaddr(), addr->GetSocklen()) != 0) {
+  if (bind(socket_, addr->GetSockaddr(), addr->GetSocklen()) != 0) {
     SYLAR_ERROR_LOG(SYLAR_LOG_ROOT)
         << "Socket::Bind error: " << strerror(errno);
     return false;
   }
+  addr_ = addr;
   return true;
 }
 
 bool Socket::Listen(int backlog) {
-  if (::listen(socket_, backlog) != 0) {
+  if (listen(socket_, backlog) != 0) {
     SYLAR_ERROR_LOG(SYLAR_LOG_ROOT)
         << "Socket::Listen error: " << strerror(errno);
     return false;
@@ -96,19 +97,24 @@ bool Socket::Listen(int backlog) {
 }
 
 Socket::ptr Socket::Accept() {
-  int fd = ::accept(socket_, nullptr, nullptr);
+  sockaddr_storage addr;
+  memset(&addr, 0, sizeof(addr));
+  socklen_t len = sizeof(addr);
+  addr.ss_family = family_;
+  int fd = accept(socket_, (sockaddr *)&addr, &len);
   if (fd == -1) {
     SYLAR_ERROR_LOG(SYLAR_LOG_ROOT)
         << "Socket::Accept error: " << strerror(errno);
     return nullptr;
   }
   Socket::ptr ret(new Socket(family_, type_, protocol_));
-  ret->Init(fd);
+  ret->socket_ = fd;
+  ret->addr_ = Address::Create((sockaddr *)&addr, len);
   return ret;
 }
 
 bool Socket::Connect(const Address::ptr addr) {
-  if (::connect(socket_, addr->GetSockaddr(), addr->GetSocklen()) != 0) {
+  if (connect(socket_, addr->GetSockaddr(), addr->GetSocklen()) != 0) {
     SYLAR_ERROR_LOG(SYLAR_LOG_ROOT)
         << "Socket::Connect error: " << strerror(errno);
     return false;
@@ -120,7 +126,7 @@ bool Socket::Connect(const Address::ptr addr) {
 bool Socket::Close() {
   is_connected_ = false;
   if (socket_ != -1) {
-    ::close(socket_);
+    close(socket_);
     socket_ = -1;
   }
   return true;
@@ -165,7 +171,7 @@ void Socket::SetSendTimeout(uint64_t v) {
 }
 
 ssize_t Socket::Send(const void *buf, size_t len, int flags) {
-  int ret = ::send(socket_, buf, len, flags);
+  int ret = send(socket_, buf, len, flags);
   if (ret == -1) {
     SYLAR_ERROR_LOG(SYLAR_LOG_ROOT)
         << "Socket::Send error: " << strerror(errno);
@@ -176,7 +182,7 @@ ssize_t Socket::Send(const void *buf, size_t len, int flags) {
 ssize_t Socket::SendTo(const void *buf, size_t len, Address::ptr to,
                        int flags) {
   int ret =
-      ::sendto(socket_, buf, len, flags, to->GetSockaddr(), to->GetSocklen());
+      sendto(socket_, buf, len, flags, to->GetSockaddr(), to->GetSocklen());
   if (ret == -1) {
     SYLAR_ERROR_LOG(SYLAR_LOG_ROOT)
         << "Socket::SendTo error: " << strerror(errno);
@@ -192,11 +198,11 @@ ssize_t Socket::SendTo(const iovec *iov, size_t length, Address::ptr to,
   msg.msg_iovlen = length;
   msg.msg_name = to->GetSockaddr();
   msg.msg_namelen = to->GetSocklen();
-  return ::sendmsg(socket_, &msg, flags);
+  return sendmsg(socket_, &msg, flags);
 }
 
 ssize_t Socket::SendMsg(const msghdr *msg, int flags) {
-  int ret = ::sendmsg(socket_, msg, flags);
+  int ret = sendmsg(socket_, msg, flags);
   if (ret == -1) {
     SYLAR_ERROR_LOG(SYLAR_LOG_ROOT)
         << "Socket::SendMsg error: " << strerror(errno);
@@ -205,7 +211,8 @@ ssize_t Socket::SendMsg(const msghdr *msg, int flags) {
 }
 
 ssize_t Socket::Recv(void *buf, size_t len, int flags) {
-  int ret = ::recv(socket_, buf, len, flags);
+  int ret = recv(socket_, buf, len, flags);
+  buf_size_ = ret;
   if (ret == -1) {
     SYLAR_ERROR_LOG(SYLAR_LOG_ROOT)
         << "Socket::Recv error: " << strerror(errno);
@@ -215,7 +222,8 @@ ssize_t Socket::Recv(void *buf, size_t len, int flags) {
 
 ssize_t Socket::RecvFrom(void *buf, size_t len, Address::ptr from, int flags) {
   socklen_t slen = from->GetSocklen();
-  int ret = ::recvfrom(socket_, buf, len, flags, from->GetSockaddr(), &slen);
+  int ret = recvfrom(socket_, buf, len, flags, from->GetSockaddr(), &slen);
+  buf_size_ = ret;
   if (ret == -1) {
     SYLAR_ERROR_LOG(SYLAR_LOG_ROOT)
         << "Socket::RecvFrom error: " << strerror(errno);
@@ -224,7 +232,8 @@ ssize_t Socket::RecvFrom(void *buf, size_t len, Address::ptr from, int flags) {
 }
 
 ssize_t Socket::RecvMsg(msghdr *msg, int flags) {
-  int ret = ::recvmsg(socket_, msg, flags);
+  int ret = recvmsg(socket_, msg, flags);
+  buf_size_ = ret;
   if (ret == -1) {
     SYLAR_ERROR_LOG(SYLAR_LOG_ROOT)
         << "Socket::RecvMsg error: " << strerror(errno);
@@ -240,7 +249,7 @@ ssize_t Socket::RecvFrom(iovec *iov, size_t length, Address::ptr from,
   msg.msg_iovlen = length;
   msg.msg_name = from->GetSockaddr();
   msg.msg_namelen = from->GetSocklen();
-  return ::recvmsg(socket_, &msg, flags);
+  return recvmsg(socket_, &msg, flags);
 }
 
 std::string Socket::ToString() {
