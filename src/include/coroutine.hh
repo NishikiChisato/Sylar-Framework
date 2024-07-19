@@ -143,6 +143,10 @@ public:
 
   static std::shared_ptr<Coroutine> GetCurrentCo();
 
+  static size_t GetInvokeDeepth() {
+    return GetThreadSchedule()->co_stack_.size();
+  }
+
   void StopEventLoop(bool val) { t_epoll_->StopEventLoop(val); }
 
   static void Yield();

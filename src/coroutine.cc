@@ -89,10 +89,29 @@ void Schedule::Eventloop(std::shared_ptr<Epoll> epoll) {
     uint64_t timeout =
         (interval == 0 ? MAX_TIMEOUT : std::min(interval + 1, MAX_TIMEOUT));
     int cnt = epoll_wait(epoll->epfd_, evs, MAX_EVENT, timeout);
+    if (cnt <= 0) {
+      if (errno == EAGAIN) {
+        std::cout << "epoll_wait timeout" << std::endl;
+      }
+    }
     for (int i = 0; i < cnt; i++) {
       auto &ev = evs[i];
       Epoll::EventCtx *ptr = (Epoll::EventCtx *)ev.data.ptr;
-      ptr->callback_();
+
+      if (ev.events & EPOLLIN) {
+        if (ptr->r_callback_) {
+          ptr->r_callback_();
+        } else if (ptr->r_co_) {
+          ptr->r_co_->Resume();
+        }
+      }
+      if (ev.events & EPOLLOUT) {
+        if (ptr->w_callback_) {
+          ptr->w_callback_();
+        } else if (ptr->w_co_) {
+          ptr->w_co_->Resume();
+        }
+      }
     }
     now = GetElapseFromRebootMS();
     epoll->ExecuteTimeout(now);
@@ -190,8 +209,8 @@ void Coroutine::Resume() {
   if (co_state_ == CO_TERMINAL) {
     return;
   }
-  assert(co_state_ == CO_READY);
-  assert(t_schedule->running_co_->co_state_ == CO_RUNNING);
+  SYLAR_ASSERT(co_state_ == CO_READY);
+  SYLAR_ASSERT(t_schedule->running_co_->co_state_ == CO_RUNNING);
 
   auto prev = t_schedule->running_co_;
   auto next = shared_from_this();

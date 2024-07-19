@@ -13,7 +13,10 @@ void Epoll::InitEpoll(std::shared_ptr<Epoll> ep) {
   ep->epfd_ = epoll_create(1);
 }
 
-void Epoll::RegisterEvent(EventType type, int fd, std::function<void()> func) {
+void Epoll::RegisterEvent(int type, int fd, std::function<void()> r_func,
+                          std::function<void()> w_func,
+                          std::shared_ptr<Coroutine> r_co,
+                          std::shared_ptr<Coroutine> w_co) {
   // set O_NONBLOCKING to fd
   auto state = fcntl(fd, F_GETFL);
   if ((state & O_NONBLOCK) == 0) {
@@ -24,7 +27,10 @@ void Epoll::RegisterEvent(EventType type, int fd, std::function<void()> func) {
   if (it == reg_event_.end()) {
     EventCtx ctx;
     ctx.type_ = type;
-    ctx.callback_.swap(func);
+    ctx.r_callback_.swap(r_func);
+    ctx.w_callback_.swap(w_func);
+    ctx.r_co_ = r_co;
+    ctx.w_co_ = w_co;
     reg_event_[fd] = ctx;
   } else {
     if ((int)it->second.type_ & (int)type) {
@@ -35,17 +41,17 @@ void Epoll::RegisterEvent(EventType type, int fd, std::function<void()> func) {
   memset(&ev, 0, sizeof(ev));
   ev.data.ptr = &reg_event_[fd];
   if (type & EventType::READ) {
-    ev.events |= EPOLLIN;
-    it->second.type_ |= (int)EventType::READ;
+    ev.events |= (EPOLLIN | EPOLLET);
+    reg_event_[fd].type_ |= (int)EventType::READ;
   }
   if (type & EventType::WRITE) {
-    ev.events |= EPOLLOUT;
-    it->second.type_ |= (int)EventType::WRITE;
+    ev.events |= (EPOLLOUT | EPOLLET);
+    reg_event_[fd].type_ |= (int)EventType::WRITE;
   }
   epoll_ctl(epfd_, EPOLL_CTL_ADD, fd, &ev);
 }
 
-void Epoll::CancelEvent(EventType type, int fd) {
+void Epoll::CancelEvent(int type, int fd) {
   auto it = reg_event_.find(fd);
   if (it == reg_event_.end()) {
     return;
@@ -57,13 +63,17 @@ void Epoll::CancelEvent(EventType type, int fd) {
   epoll_event ev;
   memset(&ev, 0, sizeof(ev));
   ev.data.ptr = &reg_event_[fd];
+  ev.events |= (EPOLLIN | EPOLLOUT | EPOLLET);
   if (type & EventType::READ) {
-    ev.events |= EPOLLIN;
-    it->second.type_ &= ~EventType::READ;
+    ev.events &= ~EPOLLIN;
+    reg_event_[fd].type_ &= ~EventType::READ;
   }
   if (type & EventType::WRITE) {
-    ev.events |= EPOLLOUT;
-    it->second.type_ &= ~EventType::WRITE;
+    ev.events &= ~EPOLLOUT;
+    reg_event_[fd].type_ &= ~EventType::WRITE;
+  }
+  if (reg_event_[fd].type_ == EventType::NONE) {
+    reg_event_.erase(fd);
   }
   epoll_ctl(epfd_, EPOLL_CTL_MOD, fd, &ev);
 }
