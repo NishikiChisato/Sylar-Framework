@@ -1,10 +1,10 @@
 #ifndef __SYLAR_TCPSERVER_H__
 #define __SYLAR_TCPSERVER_H__
 
-#include "address.h"
+#include "address.hh"
 #include "bytearray.hh"
-#include "iomanager.h"
-#include "socket.h"
+#include "coroutine.hh"
+#include "socket.hh"
 
 namespace Sylar {
 
@@ -49,8 +49,7 @@ private:
   std::vector<Socket::ptr>
       listened_socket_; // this socket serve as accpet socket
   std::string name_;
-  IOManager *iomgr_;      // IO manager
-  IOManager *acptmgr_;    // accept manager
+  std::shared_ptr<Coroutine> ac_co_;
   uint64_t recv_timeout_; // recv timeout(ms)
   bool is_stoped_;
 };

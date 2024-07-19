@@ -3,8 +3,6 @@
 namespace Sylar {
 
 TcpServer::TcpServer(const std::string &name) : name_(name) {
-  iomgr_ = IOManager::GetThis();
-  acptmgr_ = IOManager::GetThis();
   recv_timeout_ = 1000;
   is_stoped_ = true;
 }
@@ -34,8 +32,12 @@ bool TcpServer::Start() {
     return true;
   }
   is_stoped_ = false;
+  auto attr = std::make_shared<CoroutineAttr>();
   for (auto &sock : listened_socket_) {
-    acptmgr_->ScheduleTask(std::bind(&TcpServer::AcceptClient, this, sock));
+    ac_co_ = Coroutine::CreateCoroutine(
+        Schedule::GetThreadSchedule(), attr,
+        std::bind(&TcpServer::AcceptClient, this, sock));
+    ac_co_->Resume();
   }
   return true;
 }
@@ -54,11 +56,14 @@ void TcpServer::Stop() {
 
 void TcpServer::AcceptClient(Socket::ptr socket) {
   while (!IsStop()) {
-    std::cout << "TcpServer::AcceptClient enter" << std::endl;
-    std::cout.flush();
+    auto attr = std::make_shared<CoroutineAttr>();
     auto client = socket->Accept();
     if (client) {
-      iomgr_->ScheduleTask(std::bind(&TcpServer::HandleClient, this, client));
+      auto co = Coroutine::CreateCoroutine(
+          Schedule::GetThreadSchedule(), attr,
+          std::bind(&TcpServer::HandleClient, this, client));
+
+      co->Resume();
     } else {
       SYLAR_WARN_LOG(SYLAR_LOG_ROOT)
           << "TcpServer::AcceptClient socket accept failed: "
