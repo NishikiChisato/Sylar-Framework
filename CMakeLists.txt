@@ -52,14 +52,12 @@ set(ALL_SRC
     src/coroutine.cc
     src/timewheel.cc
     src/epoll.cc
-    src/fdcontext.cc
     src/hook.cc
     src/address.cc
     src/socket.cc
     src/bytearray.cc
-    src/stream.cc
-    src/socketstream.cc
-    # src/tcp_server.cc
+    src/http_message.cc
+    src/http_server.cc
 )
 
 set(ALL_TEST_FILE
@@ -75,9 +73,8 @@ set(ALL_TEST_FILE
     tests/bytearray_test.cc
     tests/socket_server.cc
     tests/socket_client.cc
-    # tests/tcpserver_test.cc
+    tests/httpserver_test.cc
 )
-
 
 enable_testing()
 
@@ -129,6 +126,6 @@ add_executable(socket_client tests/socket_client.cc ${ALL_SRC})
 target_link_libraries(socket_client ${ALL_LIBS})
 add_test(NAME socket_client COMMAND socket_client)
 
-# add_executable(tcpserver_test tests/tcpserver_test.cc ${ALL_SRC})
-# target_link_libraries(tcpserver_test ${ALL_LIBS})
-# add_test(NAME tcpserver_test COMMAND tcpserver_test)
+add_executable(httpserver tests/httpserver.cc ${ALL_SRC})
+target_link_libraries(httpserver ${ALL_LIBS})
+add_test(NAME httpserver COMMAND httpserver)
