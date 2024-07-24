@@ -62,14 +62,6 @@ public:
    */
   bool SetSockOpt(int level, int option, void *result, socklen_t len);
 
-  uint64_t GetSendTimeout();
-
-  void SetSendTimeout(uint64_t v);
-
-  uint64_t GetRecvTimeout();
-
-  void SetRecvTimeout(uint64_t v);
-
   /**
    * @brief accept connection
    *
@@ -152,7 +144,7 @@ public:
 
   std::vector<char> &GetBuffer() { return buf_; }
 
-  size_t GetBufferSize() { return buf_size_; }
+  size_t &GetBufferSize() { return buf_size_; }
 
   virtual std::string ToString();
 
@@ -160,22 +152,22 @@ public:
    * @brief cancel read event
    */
   void CancelReadEvent() {
-    Schedule::GetThreadEpoll()->CancelEvent(Epoll::EventType::READ, socket_);
+    Epoll::GetThreadEpoll()->CancelEvent(Epoll::EventType::READ, socket_);
   }
 
   /**
    * @brief cancel write event
    */
   void CancelWriteEvent() {
-    Schedule::GetThreadEpoll()->CancelEvent(Epoll::EventType::WRITE, socket_);
+    Epoll::GetThreadEpoll()->CancelEvent(Epoll::EventType::WRITE, socket_);
   }
 
   /**
    * @brief cancel all event
    */
   void CancelAllEvent() {
-    Schedule::GetThreadEpoll()->CancelEvent(Epoll::EventType::READ, socket_);
-    Schedule::GetThreadEpoll()->CancelEvent(Epoll::EventType::WRITE, socket_);
+    Epoll::GetThreadEpoll()->CancelEvent(Epoll::EventType::READ, socket_);
+    Epoll::GetThreadEpoll()->CancelEvent(Epoll::EventType::WRITE, socket_);
   }
 
 protected:
@@ -186,6 +178,11 @@ protected:
   bool is_connected_; // connected or not(UDP is connectless, so this field is
                       // always true)
   Address::ptr addr_; // the address bind to this socket
+
+  // these buffer is used to store data to be send. this design comes from such
+  // scenario that this socket current only can read, so we can recv data from
+  // this socket and after a while, we send respond data to socket. in this
+  // scenario, we need a buffer to store data to send socket after a while
   std::vector<char> buf_;
   size_t buf_size_;
 };

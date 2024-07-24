@@ -1,6 +1,5 @@
 #include "include/socket.hh"
 #include "include/address.hh"
-#include "include/fdcontext.hh"
 
 namespace Sylar {
 
@@ -38,7 +37,8 @@ Socket::Socket(int family, int type, int protocol)
     SetSockOpt(IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val));
   }
 
-  FDManager::Instance().GetFD(socket_, true);
+  int flag = fcntl(socket_, F_GETFL);
+  fcntl(socket_, F_SETFL, flag | O_NONBLOCK);
 
   if (socket_ == -1) {
     SYLAR_ERROR_LOG(SYLAR_LOG_ROOT)
@@ -130,44 +130,6 @@ bool Socket::Close() {
     socket_ = -1;
   }
   return true;
-}
-
-uint64_t Socket::GetSendTimeout() {
-  auto fd = FDManager::Instance().GetFD(socket_);
-  if (fd) {
-    return fd->GetTimeout(SO_SNDTIMEO);
-  }
-  return 0;
-}
-
-uint64_t Socket::GetRecvTimeout() {
-  auto fd = FDManager::Instance().GetFD(socket_);
-  if (fd) {
-    return fd->GetTimeout(SO_RCVTIMEO);
-  }
-  return 0;
-}
-
-void Socket::SetRecvTimeout(uint64_t v) {
-  struct timeval tv {
-    int64_t(v) / 1000, int64_t(v) / 1000000
-  };
-  SetSockOpt(SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-  auto fd = FDManager::Instance().GetFD(socket_);
-  if (fd) {
-    fd->SetTimeout(SO_RCVTIMEO, v);
-  }
-}
-
-void Socket::SetSendTimeout(uint64_t v) {
-  struct timeval tv {
-    int64_t(v) / 1000, int64_t(v) / 1000000
-  };
-  SetSockOpt(SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
-  auto fd = FDManager::Instance().GetFD(socket_);
-  if (fd) {
-    fd->SetTimeout(SO_SNDTIMEO, v);
-  }
 }
 
 ssize_t Socket::Send(const void *buf, size_t len, int flags) {
