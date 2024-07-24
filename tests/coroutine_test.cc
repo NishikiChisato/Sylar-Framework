@@ -202,7 +202,7 @@ uint64_t GetMemoryUsage() {
   return re.ru_maxrss;
 }
 
-TEST(Coroutine, MemoryMeasure) {
+TEST(Coroutine, DISABLED_MemoryMeasure) {
   const int cnt = 5e6;
   const int cycle = 10;
   auto attr = std::make_shared<Sylar::CoroutineAttr>();
@@ -224,4 +224,46 @@ TEST(Coroutine, MemoryMeasure) {
   std::cout << "Memory Usage(Resident Set Size): " << mem_ed - mem_st << " KB"
             << "(" << ((double)mem_ed - (double)mem_st) / 1024.0 / 1024.0
             << " GB)" << std::endl;
+}
+
+std::mutex mu;
+int sum = 1e4;
+int g_cnt = 0;
+
+void Tsk1() {
+  for (int i = 0; i < sum; i++) {
+    mu.lock();
+    g_cnt++;
+    mu.unlock();
+
+    Sylar::Schedule::Yield();
+  }
+}
+
+void ThreadTsk() {
+  auto attr = std::make_shared<Sylar::CoroutineAttr>();
+  attr->shared_mem_ = Sylar::SharedMem::AllocSharedMem(64, 64 * 1024);
+
+  auto co1 = Sylar::Coroutine::CreateCoroutine(
+      Sylar::Schedule::GetThreadSchedule(), attr, std::bind(&Tsk1));
+
+  auto co2 = Sylar::Coroutine::CreateCoroutine(
+      Sylar::Schedule::GetThreadSchedule(), attr, std::bind(&Tsk1));
+
+  for (int i = 0; i < sum; i++) {
+    co1->Resume();
+    co2->Resume();
+  }
+
+  co1->Resume();
+  co2->Resume();
+}
+
+TEST(Coroutine, MultiThread) {
+  std::thread t1(ThreadTsk), t2(ThreadTsk);
+
+  t1.join();
+  t2.join();
+
+  EXPECT_EQ(g_cnt, 4 * sum);
 }

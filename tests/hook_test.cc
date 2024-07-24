@@ -21,10 +21,10 @@ TEST(Hook, WithHook) {
 
   std::thread t([&]() {
     std::this_thread::sleep_for(std::chrono::milliseconds(6000));
-    Sylar::Schedule::GetThreadEpoll()->StopEventLoop(true);
+    Sylar::Epoll::GetThreadEpoll()->StopEventLoop(true);
   });
 
-  Sylar::Schedule::Eventloop(Sylar::Schedule::GetThreadEpoll());
+  Sylar::Schedule::Eventloop(Sylar::Epoll::GetThreadEpoll());
 
   t.join();
 
@@ -51,10 +51,10 @@ TEST(Hook, WithoutHook) {
 
   std::thread t([&]() {
     std::this_thread::sleep_for(std::chrono::milliseconds(6000));
-    Sylar::Schedule::GetThreadEpoll()->StopEventLoop(true);
+    Sylar::Epoll::GetThreadEpoll()->StopEventLoop(true);
   });
 
-  Sylar::Schedule::Eventloop(Sylar::Schedule::GetThreadEpoll());
+  Sylar::Schedule::Eventloop(Sylar::Epoll::GetThreadEpoll());
 
   t.join();
 

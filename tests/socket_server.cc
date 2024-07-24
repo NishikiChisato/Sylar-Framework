@@ -34,7 +34,7 @@ void AcceptCo(Sylar::Socket::ptr listenfd) {
     if (clientfd) {
       std::cout << "new client connect: " << clientfd->GetAddress()->ToString()
                 << ", socket fd: " << clientfd->GetSocket() << std::endl;
-      auto epoll = Sylar::Schedule::GetThreadEpoll();
+      auto epoll = Sylar::Epoll::GetThreadEpoll();
 
       auto attr = std::make_shared<Sylar::CoroutineAttr>();
       auto r_co = Sylar::Coroutine::CreateCoroutine(
@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
       Sylar::Coroutine::CreateCoroutine(Sylar::Schedule::GetThreadSchedule(),
                                         attr, std::bind(&AcceptCo, listenfd));
 
-  auto epoll = Sylar::Schedule::GetThreadEpoll();
+  auto epoll = Sylar::Epoll::GetThreadEpoll();
 
   epoll->RegisterEvent(Sylar::Epoll::EventType::READ |
                            Sylar::Epoll::EventType::WRITE,

@@ -22,7 +22,7 @@ TEST(Epoll, TimerEvent) {
 
   std::cout << "start: " << st << std::endl;
 
-  auto epoll = Sylar::Schedule::GetThreadEpoll();
+  auto epoll = Sylar::Epoll::GetThreadEpoll();
 
   std::thread t1([&]() {
     std::this_thread::sleep_for(std::chrono::milliseconds(3000));
@@ -35,7 +35,7 @@ TEST(Epoll, TimerEvent) {
   epoll->AddTimer(1000, std::bind(&tsk1, st));
   epoll->AddTimer(2000, std::bind(&tsk1, st));
 
-  Sylar::Schedule::Eventloop(Sylar::Schedule::GetThreadEpoll());
+  Sylar::Schedule::Eventloop(Sylar::Epoll::GetThreadEpoll());
 
   t1.join();
 }
@@ -59,7 +59,7 @@ TEST(Epoll, CoroutineTime) {
 
   co1->Resume();
 
-  auto epoll = Sylar::Schedule::GetThreadEpoll();
+  auto epoll = Sylar::Epoll::GetThreadEpoll();
   epoll->AddTimer(100, nullptr, co1);
   epoll->StopEventLoop(false);
 
