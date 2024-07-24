@@ -1,7 +1,6 @@
 #include "include/hook.hh"
 #include "include/coroutine.hh"
 #include "include/epoll.hh"
-#include "include/fdcontext.hh"
 
 static bool is_hook_enable = true;
 
@@ -45,19 +44,9 @@ static ssize_t do_io(int fd, OriginFunc func, uint32_t event, Args &&...args) {
   if (!Sylar::GetHookEnable()) {
     return func(fd, std::forward<Args>(args)...);
   }
-  // fdcontext is used to set nonblock
-  auto fdptr = FDManager::Instance().GetFD(fd, true);
 
-  if (!fdptr) {
-    return func(fd, std::forward<Args>(args)...);
-  }
-  if (fdptr->IsClose()) {
-    errno = EBADF;
-    return -1;
-  }
-  if ((!fdptr->IsSocket() && !fdptr->IsFifo()) || !fdptr->IsNonBlock()) {
-    return func(fd, std::forward<Args>(args)...);
-  }
+  int flag = fcntl(fd, F_GETFL);
+  fcntl(fd, F_SETFL, flag | O_NONBLOCK);
 
 retry:
   ssize_t n = func(fd, std::forward<Args>(args)...);
@@ -67,7 +56,7 @@ retry:
   }
   if (n == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
     // if current call return immediately
-    auto epoll = Sylar::Schedule::GetThreadEpoll();
+    auto epoll = Sylar::Epoll::GetThreadEpoll();
     if (event & Sylar::Epoll::EventType::READ) {
       epoll->RegisterEvent((Sylar::Epoll::EventType)event, fd, nullptr, nullptr,
                            Sylar::Schedule::GetCurrentCo());
@@ -104,7 +93,7 @@ unsigned int sleep(unsigned int seconds) {
   }
   SYLAR_INFO_LOG(SYLAR_LOG_ROOT) << "hook sleep execute";
 
-  auto epoll = Sylar::Schedule::GetThreadEpoll();
+  auto epoll = Sylar::Epoll::GetThreadEpoll();
   epoll->AddTimer(seconds * 1000, nullptr, Sylar::Schedule::GetCurrentCo());
   Sylar::Schedule::Yield();
 
@@ -116,7 +105,7 @@ int usleep(useconds_t usec) {
     return usleep_f(usec);
   }
   SYLAR_INFO_LOG(SYLAR_LOG_ROOT) << "hook usleep execute";
-  auto epoll = Sylar::Schedule::GetThreadEpoll();
+  auto epoll = Sylar::Epoll::GetThreadEpoll();
   epoll->AddTimer(usec / 1000, nullptr, Sylar::Schedule::GetCurrentCo());
   Sylar::Schedule::Yield();
   return 0;
@@ -174,13 +163,9 @@ int close(int fd) {
   if (!Sylar::GetHookEnable()) {
     return close_f(fd);
   }
-  auto fdptr = Sylar::FDManager::Instance().GetFD(fd);
-  if (fdptr) {
-    auto epoll = Sylar::Schedule::GetThreadEpoll();
-    epoll->CancelEvent(Sylar::Epoll::EventType::READ, fd);
-    epoll->CancelEvent(Sylar::Epoll::EventType::WRITE, fd);
-    Sylar::FDManager::Instance().DeleteFD(fd);
-  }
+  auto epoll = Sylar::Epoll::GetThreadEpoll();
+  epoll->CancelEvent(Sylar::Epoll::EventType::READ, fd);
+  epoll->CancelEvent(Sylar::Epoll::EventType::WRITE, fd);
   return close_f(fd);
 }
 }

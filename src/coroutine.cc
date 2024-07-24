@@ -6,8 +6,6 @@ namespace Sylar {
 
 thread_local std::shared_ptr<Schedule> Schedule::t_schedule_ = nullptr;
 
-thread_local std::shared_ptr<Epoll> Schedule::t_epoll_ = nullptr;
-
 void Schedule::InitThreadSchedule() {
   t_schedule_ = Schedule::Instance();
   auto main_co = Coroutine::CreateCoroutine(t_schedule_, nullptr, nullptr);
@@ -72,14 +70,9 @@ void Schedule::SwapContext(std::shared_ptr<Coroutine> prev,
   swapcontext(&prev->coctx_, &next->coctx_);
 }
 
-void Schedule::InitThreadEpoll() {
-  t_epoll_ = Epoll::Instance();
-  Epoll::InitEpoll(t_epoll_);
-}
-
 void Schedule::Eventloop(std::shared_ptr<Epoll> epoll) {
   const uint64_t MAX_TIMEOUT = 1000;
-  const int MAX_EVENT = 256;
+  const int MAX_EVENT = 1024;
   epoll_event *evs = (epoll_event *)calloc(MAX_EVENT, sizeof(epoll_event));
   std::shared_ptr<epoll_event> deleter(evs, free);
   while (!epoll->Stoped()) {
@@ -96,7 +89,7 @@ void Schedule::Eventloop(std::shared_ptr<Epoll> epoll) {
     }
     for (int i = 0; i < cnt; i++) {
       auto &ev = evs[i];
-      Epoll::EventCtx *ptr = (Epoll::EventCtx *)ev.data.ptr;
+      auto ptr = epoll->reg_event_[ev.data.fd];
 
       if (ev.events & EPOLLIN) {
         if (ptr->r_callback_) {
@@ -149,6 +142,14 @@ void Coroutine::SaveStack() {
   // |------------------|  (low address)
   // clang-format on
 
+  if (this->dummy_ == nullptr) {
+    // dummy somehow is nullptr, we just save all its stace space
+    this->saved_stack_ =
+        MemoryAlloc::AllocSharedMemory(this->stack_mem_->size_);
+    memcpy(this->saved_stack_.get(), this->stack_mem_->stack_buffer_.get(),
+           this->stack_mem_->size_);
+  }
+
   size_t len = (char *)this->stack_mem_->stack_buffer_.get() +
                this->stack_mem_->size_ - (char *)this->dummy_;
   this->saved_stack_ = MemoryAlloc::AllocSharedMemory(len);
@@ -190,6 +191,7 @@ Coroutine::CreateCoroutine(std::shared_ptr<Schedule> sc,
   co->co_state_ = CoState::CO_READY;
   co->saved_stack_ = nullptr;
   co->saved_size_ = 0;
+  co->dummy_ = nullptr;
   getcontext(&co->coctx_);
 
   if (attr) {
@@ -205,7 +207,7 @@ Coroutine::CreateCoroutine(std::shared_ptr<Schedule> sc,
 }
 
 void Coroutine::Resume() {
-  auto t_schedule = schedule_->GetThreadSchedule();
+  auto t_schedule = Schedule::GetThreadSchedule();
   if (co_state_ == CO_TERMINAL) {
     return;
   }

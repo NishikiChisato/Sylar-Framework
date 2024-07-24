@@ -2,7 +2,6 @@
 #define __SYLAR_HOOK_H__
 
 #include "./log.h"
-#include "fdcontext.hh"
 #include <dlfcn.h>
 #include <stdint.h>
 #include <sys/socket.h>

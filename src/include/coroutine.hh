@@ -94,6 +94,7 @@ struct SharedMem {
 };
 
 struct CoroutineAttr {
+  typedef std::shared_ptr<CoroutineAttr> ptr;
   size_t stack_size_;
   std::shared_ptr<SharedMem> shared_mem_;
 
@@ -107,6 +108,8 @@ class Schedule {
 public:
   friend Coroutine;
   friend Epoll;
+
+  typedef std::shared_ptr<Schedule> ptr;
 
   /**
    * when shared_ptr try to delete a object, it will invoke destructor.
@@ -130,15 +133,6 @@ public:
 
   static void InitThreadSchedule();
 
-  static std::shared_ptr<Epoll> GetThreadEpoll() {
-    if (!t_epoll_) {
-      InitThreadEpoll();
-    }
-    return t_epoll_;
-  }
-
-  static void InitThreadEpoll();
-
   static void Eventloop(std::shared_ptr<Epoll> epoll);
 
   static std::shared_ptr<Coroutine> GetCurrentCo();
@@ -146,8 +140,6 @@ public:
   static size_t GetInvokeDeepth() {
     return GetThreadSchedule()->co_stack_.size();
   }
-
-  void StopEventLoop(bool val) { t_epoll_->StopEventLoop(val); }
 
   static void Yield();
 
@@ -165,13 +157,13 @@ private:
   std::shared_ptr<Coroutine> running_co_;
 
   static thread_local std::shared_ptr<Schedule> t_schedule_;
-
-  static thread_local std::shared_ptr<Epoll> t_epoll_;
 };
 
 class Coroutine : public std::enable_shared_from_this<Coroutine> {
 public:
   friend Schedule;
+
+  typedef std::shared_ptr<Coroutine> ptr;
 
   enum CoState {
     CO_READY = 0,
