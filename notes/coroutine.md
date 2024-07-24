@@ -3,9 +3,6 @@
 - [Coroutine Module](#coroutine-module)
   - [Basic](#basic)
   - [The Design of Coroutine](#the-design-of-coroutine)
-- [Schedule Module](#schedule-module)
-  - [Two Execution Mode](#two-execution-mode)
-  - [The issue of Idel](#the-issue-of-idel)
 
 
 ## Basic
@@ -71,41 +68,8 @@ The interpretation of `ucp->uc_stack` is just as in `sigaltstack(2)`, namely, th
 
 ## The Design of Coroutine
 
-We define two static thread_local smart pointer: `t_cur_coroutine` and `t_main_coroutine`. These two pointer separately manage coroutine object, indicating two separated coroutine. When you initialize a coroutine object with parameterized constructor, that object serve as sub-coroutine and main coroutine must separately initialize in another method. So, **if we want to resume coroutine, we must call `CreateMainCo` before we resume it.**   
+The requirements we need to implement:
 
-When we use object to call `SwapIn()` method, the execution flow will swap from main coroutine to sub-coroutine. In actuall execution, we will jump into `MainFunc` function(swap to context of `MainFunc`), the context of `obj.SwapIn()` will store in `t_main_coroutine`. 
+- We need a scheduler to track each invocation of coroutine(resume and yield), this scheduler should be thread local storage.
+- The schedule class should declare this scheduler variable as `static thread_local`, so that we can separatedly use in thread without disturbing another thread.
 
-Precisely speaking, the context of the method of initializing coroutine should treat to be main coroutine and the context of that coroutine object should treat to be sub-coroutine. 
-
-In this design, we only support two coroutine execution and the execution of these two coroutines always in single thread, they just swap context with each other, instead of access data simutaneously, so we don't need to hold mutex.
-
-# Schedule Module
-
-In our coroutine module, each thread only has two static thread local variable to track two different coroutine: main coroutine and sub-coroutine. `t_main_coroutine` always points to main coroutine and `t_cur_coroutine` always points to current executing coroutine. Since when we want to resume a coroutine, we must use member metohd(that is `Resume()`), it will automatically assign pointer of current coroutine to `t_cur_coroutine`. Because of this fact, each thread only support two coroutine.
-
-Since out coroutine besed on context swapping, if we only have one thread and want to perform many task, including function and coroutine, the execution flow of current thread must be blocked and wait all task has done. Above that, if we want to consider current thread, which is initializing scheduler, as scheduler thread, whose responsibility is initializing schedule and wait for all task, and work thread, whose responsibility is execute method or coroutine, only two pointer cannot satisfy out demand.
-
-We introduce another pointer, called `t_global_coroutine`, to store main context(which is the execution flow of initializing scheduler). Now, if we want to treat current thread as worker thread, which will change the value of `t_cur_pointer` and `t_main_pointer`, we can still go back to main context.
-
-## Two Execution Mode
-
-We can chose whether use caller thread as worker thread or not, in order to simplify our discussion, we consider two scenario:
-
-- `threads: 1, use_caller: false`
-- `threads: 1, use_caller: true`
-
-In scenario 1, we will additionally create another thread as worker thread and main thread only wait for its return, the execution flow of main thread is as follows:
-
-![NotUseCaller](./excalidraw/NoUseCaller.md)
-
-In scenario 2, we will not create another thread, main thread will serve as worker thread, as follows:
-
-![UseCaller](./excalidraw/UseCaller.png)
-
-## The issue of Idel
-
-If one thread is idel, it will execute `Idel()` method, this method just yield control back to main coroutine. So in this framework, if one thread is idel, it will spin in CPU and waste CPU time.
-
-You might say why we don't desing a sort of notify mechanism to notify sleep thread. But it will cause another issue: a thread is idel, it will sleep and wait for notifying, it's good, but if a thread is in idel, it will exit only when task arrives; if a task want to arrive, the idel should exit. It cause deathlock. 
-
-Frankly speaking, this issue cannot be address in current framework, maybe we can think of another wat to alleviate it. In the section of IO Manager, idel thread can block in `epoll_wait` to wait for file descriptor to be "ready"(ready to read and write), which can alleviate this spin.
