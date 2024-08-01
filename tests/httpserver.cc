@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
   std::string port(argv[2]);
 
   auto server =
-      std::make_shared<Sylar::http::HttpServer>(host, std::stoi(port));
+      std::make_shared<Sylar::http::HttpServer>(host, std::stoi(port), true);
   server->Start();
   server->RegisterHttpRequestHandler("/", Sylar::http::HttpMethod::GET,
                                      index_handler);
@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
   std::cout << "server start..." << std::endl;
   std::cout << "type [quit] to quit server" << std::endl;
   std::string cmd;
-  while (std::cin >> cmd && cmd != "quit") {
+  while (std::cin >> cmd, cmd != "quit") {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
   server->Stop();

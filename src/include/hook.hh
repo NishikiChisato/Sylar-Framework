@@ -1,7 +1,7 @@
 #ifndef __SYLAR_HOOK_H__
 #define __SYLAR_HOOK_H__
 
-#include "./log.h"
+#include "log.hh"
 #include <dlfcn.h>
 #include <stdint.h>
 #include <sys/socket.h>

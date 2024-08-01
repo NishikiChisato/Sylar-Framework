@@ -1,5 +1,5 @@
-#include "../src/include/config.h"
-#include "../src/include/log.h"
+#include "../src/include/config.hh"
+#include "../src/include/log.hh"
 #include <filesystem>
 #include <gtest/gtest.h>
 #include <list>

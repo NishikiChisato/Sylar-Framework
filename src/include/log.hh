@@ -1,8 +1,8 @@
 #ifndef __SYLAR_LOG_H__
 #define __SYLAR_LOG_H__
 
-#include "mutex.h"
-#include "singleton.h"
+#include "mutex.hh"
+#include "singleton.hh"
 #include <cstdarg>
 #include <cstdint>
 #include <ctime>

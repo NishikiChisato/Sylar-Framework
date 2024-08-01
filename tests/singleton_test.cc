@@ -1,4 +1,4 @@
-#include "../src/include/singleton.h"
+#include "../src/include/singleton.hh"
 #include <gtest/gtest.h>
 
 class A {

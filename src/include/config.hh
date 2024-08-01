@@ -1,7 +1,7 @@
 #ifndef __SYLAR_CONFIG_H__
 #define __SYLAR_CONFIG_H__
 
-#include "log.h"
+#include "log.hh"
 #include <boost/core/demangle.hpp>
 #include <boost/lexical_cast.hpp>
 #include <functional>

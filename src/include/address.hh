@@ -1,7 +1,7 @@
 #ifndef __SYLAR_ADDRESS_H__
 #define __SYLAR_ADDRESS_H__
 
-#include "./log.h"
+#include "log.hh"
 #include <arpa/inet.h>
 #include <cstring>
 #include <iostream>

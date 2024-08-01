@@ -1,4 +1,4 @@
-#include "include/mutex.h"
+#include "include/mutex.hh"
 #include <stdexcept>
 
 namespace Sylar {

@@ -1,5 +1,5 @@
-#include "include/config.h"
-#include "include/log.h"
+#include "include/config.hh"
+#include "include/log.hh"
 #include <boost/core/demangle.hpp>
 #include <boost/lexical_cast.hpp>
 #include <exception>

@@ -1,4 +1,4 @@
-#include "../src/include/log.h"
+#include "../src/include/log.hh"
 #include <cstdio>
 #include <fstream>
 #include <gtest/gtest.h>

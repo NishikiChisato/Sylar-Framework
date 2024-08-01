@@ -3,7 +3,7 @@
 
 #include "coroutine.hh"
 #include "http_message.hh"
-#include "log.h"
+#include "log.hh"
 #include <algorithm>
 #include <arpa/inet.h>
 #include <condition_variable>
@@ -22,13 +22,14 @@ namespace http {
 static constexpr int kMaxBufferSize = 4096;
 
 struct EventData {
-  EventData() : fd_(-1), length_(0), cursor_(0), buf_() {}
+  EventData() : fd_(-1), length_(0), cursor_(0), buf_(), keep_alive_(true) {}
   int fd_;
   size_t length_; // the length of received data
   size_t cursor_; // when we want to send response message, this cursor point to
                   // last bytes to send to client
   char buf_[kMaxBufferSize]; // buffer to receive http request message and
                              // store http response message
+  bool keep_alive_;
 };
 
 using HttpRequestHandler = std::function<HttpResponse(const HttpRequest &)>;
@@ -38,7 +39,8 @@ public:
   using ptr = std::shared_ptr<HttpServer>;
 
   HttpServer() = default;
-  explicit HttpServer(const std::string &host, std::uint16_t port);
+  explicit HttpServer(const std::string &host, std::uint16_t port,
+                      bool use_co = true);
   ~HttpServer() = default;
 
   void Start();
@@ -75,6 +77,24 @@ private:
    */
   void HandleEpollEvent(int epfd, std::uint32_t event, EventData *data);
 
+  void EventLoopWithCo(int thread);
+
+  /**
+   * @brief coroutine will resume this function when client can be read, http
+   * request message will store in data
+   *
+   * @param [out] data
+   */
+  void HandleReadEvent(int epfd, EventData *data);
+
+  /**
+   * @brief coroutine will resume this function  when client can be wirrten,
+   * http response message will send to client
+   *
+   * @param [in] data
+   */
+  void HandleWriteEvent(int epfd, EventData *data);
+
   void HandleRequestData(const EventData *request, EventData *response);
 
   HttpResponse HandleRequestMessage(const HttpRequest &request);
@@ -91,6 +111,7 @@ private:
   std::uint16_t port_;
   int sock_fd_; // this socket serve as accpet socket
   bool running_;
+  bool use_co_;
 
   std::thread listener_thread_;
   std::vector<std::thread> worker_threads_; // size is kThreadPoolSize

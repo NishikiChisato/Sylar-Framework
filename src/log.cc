@@ -1,4 +1,4 @@
-#include "include/log.h"
+#include "include/log.hh"
 #include <ctime>
 #include <filesystem>
 #include <fstream>
