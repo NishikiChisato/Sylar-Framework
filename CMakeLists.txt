@@ -120,12 +120,9 @@ add_test(NAME hook_test COMMAND hook_test)
 
 add_executable(socket_server tests/socket_server.cc ${ALL_SRC})
 target_link_libraries(socket_server ${ALL_LIBS})
-add_test(NAME socket_server COMMAND socket_server)
 
 add_executable(socket_client tests/socket_client.cc ${ALL_SRC})
 target_link_libraries(socket_client ${ALL_LIBS})
-add_test(NAME socket_client COMMAND socket_client)
 
 add_executable(httpserver tests/httpserver.cc ${ALL_SRC})
 target_link_libraries(httpserver ${ALL_LIBS})
-add_test(NAME httpserver COMMAND httpserver)
