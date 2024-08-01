@@ -1,6 +1,7 @@
 #ifndef __SYLAR_EPOLL_HH__
 #define __SYLAR_EPOLL_HH__
 
+#include "hook.hh"
 #include "timewheel.hh"
 #include <cstring>
 #include <fcntl.h>
@@ -36,7 +37,7 @@ public:
     void *ptr_; // user can pass a pointer to EventCtx
   };
 
-  ~Epoll() { close(epfd_); }
+  ~Epoll();
 
   static std::shared_ptr<Epoll> Instance() {
     static thread_local std::shared_ptr<Epoll> instance(new Epoll());
@@ -84,6 +85,7 @@ public:
   bool loop_;
 
   static thread_local std::shared_ptr<Epoll> t_epoll_;
+  static thread_local int64_t reference_cnt_;
 };
 
 } // namespace Sylar

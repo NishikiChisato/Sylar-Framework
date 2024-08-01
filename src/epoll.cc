@@ -3,11 +3,19 @@
 namespace Sylar {
 
 thread_local std::shared_ptr<Epoll> Epoll::t_epoll_ = nullptr;
+thread_local int64_t Epoll::reference_cnt_ = 0;
+
+Epoll::~Epoll() {
+  if (--reference_cnt_ == 0) {
+    close(epfd_);
+  }
+}
 
 std::shared_ptr<Epoll> Epoll::GetThreadEpoll() {
   if (!t_epoll_) {
     InitThreadEpoll();
   }
+  reference_cnt_++;
   return t_epoll_;
 }
 

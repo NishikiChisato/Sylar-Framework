@@ -19,9 +19,11 @@ TEST(Hook, WithHook) {
   co1->Resume();
   co2->Resume();
 
+  auto ep = Sylar::Epoll::GetThreadEpoll();
+
   std::thread t([&]() {
     std::this_thread::sleep_for(std::chrono::milliseconds(6000));
-    Sylar::Epoll::GetThreadEpoll()->StopEventLoop(true);
+    ep->StopEventLoop(true);
   });
 
   Sylar::Schedule::Eventloop(Sylar::Epoll::GetThreadEpoll());
