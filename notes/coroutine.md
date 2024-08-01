@@ -2,7 +2,6 @@
 
 - [Coroutine Module](#coroutine-module)
   - [Basic](#basic)
-  - [The Design of Coroutine](#the-design-of-coroutine)
 
 
 ## Basic
@@ -65,11 +64,3 @@ When successful, `swapcontext()` does not return.  (But we may return later, in 
 Notes:
 
 The interpretation of `ucp->uc_stack` is just as in `sigaltstack(2)`, namely, this struct contains the start and length of a memory area to be used as the stack, regardless of the direction of growth of the stack.  Thus, it is not necessary for the user program to worry about this direction.
-
-## The Design of Coroutine
-
-The requirements we need to implement:
-
-- We need a scheduler to track each invocation of coroutine(resume and yield), this scheduler should be thread local storage.
-- The schedule class should declare this scheduler variable as `static thread_local`, so that we can separatedly use in thread without disturbing another thread.
-

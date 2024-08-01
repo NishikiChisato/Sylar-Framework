@@ -5,7 +5,6 @@
   - [Prerequisite](#prerequisite)
     - [Blocking and Non-Blocking for File Dexcriptor](#blocking-and-non-blocking-for-file-dexcriptor)
     - [Select \& Poll \& Epoll](#select--poll--epoll)
-  - [IO Manager: Deriving from Scheduler](#io-manager-deriving-from-scheduler)
 
 
 ## The design of Scheduler
@@ -60,16 +59,3 @@ If we use `poll`:
 If we use `epoll`:
 
 - This interface don't have above three disadvantages
-
-
-## IO Manager: Deriving from Scheduler
-
-If we want to monitoring some file descriptor(fd), which means that if there are some events occur in this fd(for example, this fd is ready for read or write operation), we want to trigger exectution of some callback function. Our IO Manager is designed for addressing this issue. 
-
-In out IO Manager, we wrap monitoring event and callback funciton as `FDContext`, callback function consist of three part: scheduler(dyanmic cast from this pointer), `std::function` object and coroutine object. We use `std::vector` to attach `FDContext` with file descriptor. The element on `std::vector` we merely use raw pointer instead of smart pointer, since each `FDContext` object only accessed by this vector and if we use smart pointer, we must implement deep copy. If not, when we expend the size of vector, we might get error.
-
-We only design two event type: READ and WRITE, the type of monitoring event in epoll can be grouped into these two type, but in our code, we don't focus on other event type. 
-
-This class overwrites `Notify()/Idel()/IsStop()` interface, we use pipe to notify idle thread, which is block in `epoll_wait`, we just simply write a charactor to pipe.
-
-The data field in `epoll_event` struct can used to store any data that user want, we use it to store the address of `FDContext` coresponding to its file descriptor.
